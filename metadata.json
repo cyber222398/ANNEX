@@ -1,0 +1,6 @@
+{
+  "name": "Mine Extraction Study",
+  "description": "Étude et simulation interactive de la Machine d'Extraction (Skip) de la Mine d'Or Ouansimi - Rapport de stage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
