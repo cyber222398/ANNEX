@@ -1,0 +1,31 @@
+<svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1600" height="1000" rx="48" fill="#0B1020"/>
+  <rect x="110" y="110" width="1380" height="780" rx="36" fill="#111827" stroke="#253044" stroke-width="2"/>
+  <text x="150" y="175" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">Annexe E - Courbes SCADA</text>
+  <text x="150" y="215" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="18">Capture representative des tendances de supervision</text>
+  <g stroke="#253044" stroke-width="1">
+    <path d="M180 300H1420"/>
+    <path d="M180 420H1420"/>
+    <path d="M180 540H1420"/>
+    <path d="M180 660H1420"/>
+    <path d="M180 780H1420"/>
+    <path d="M300 280V800"/>
+    <path d="M520 280V800"/>
+    <path d="M740 280V800"/>
+    <path d="M960 280V800"/>
+    <path d="M1180 280V800"/>
+    <path d="M1400 280V800"/>
+  </g>
+  <path d="M185 690C275 640 325 658 392 610C470 554 520 404 615 420C705 435 721 592 812 572C900 553 910 382 1014 364C1110 347 1142 495 1235 486C1320 478 1358 376 1420 346" stroke="#60A5FA" stroke-width="7" stroke-linecap="round"/>
+  <path d="M185 585C278 530 360 540 428 575C520 622 560 710 648 694C738 678 760 548 850 530C958 508 1000 650 1108 638C1210 626 1255 498 1420 528" stroke="#34D399" stroke-width="7" stroke-linecap="round"/>
+  <path d="M185 745C330 728 420 718 540 742C710 776 790 730 905 702C1040 668 1170 718 1420 700" stroke="#FBBF24" stroke-width="7" stroke-linecap="round"/>
+  <g transform="translate(150 830)">
+    <rect width="1180" height="34" rx="17" fill="#172033"/>
+    <circle cx="22" cy="17" r="7" fill="#60A5FA"/>
+    <text x="40" y="23" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="14">Courant moteur</text>
+    <circle cx="190" cy="17" r="7" fill="#34D399"/>
+    <text x="208" y="23" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="14">Vitesse</text>
+    <circle cx="315" cy="17" r="7" fill="#FBBF24"/>
+    <text x="333" y="23" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="14">Charge</text>
+  </g>
+</svg>
