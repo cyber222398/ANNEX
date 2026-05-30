@@ -18,7 +18,6 @@ export type AnnexItem = {
   sizeBytes: number;
   updatedAt: string;
   tags: string[];
-  accent: "blue" | "emerald" | "amber" | "rose" | "violet";
   priority: number;
   pageCount?: number;
 };
@@ -145,10 +144,6 @@ function getKnownMetadata(filename: string) {
   return knownAnnexes.find((annex) => annex.match.test(filename));
 }
 
-function accentFor(index: number): AnnexItem["accent"] {
-  return (["blue", "emerald", "amber", "rose", "violet"] as const)[index % 5];
-}
-
 export function getAnnexes(): AnnexItem[] {
   const files = walkFiles(ANNEX_ROOT)
     .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()))
@@ -178,7 +173,6 @@ export function getAnnexes(): AnnexItem[] {
         sizeBytes: stat.size,
         updatedAt: stat.mtime.toISOString(),
         tags: metadata?.tags ?? [classified.category.toLowerCase(), extension.replace(".", "")],
-        accent: accentFor(index),
         priority: metadata?.priority ?? 500 + index,
         pageCount: classified.kind === "pdf" ? 12 : undefined,
       } satisfies AnnexItem;

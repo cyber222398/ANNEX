@@ -1,6 +1,6 @@
-# Ouansimi Annex Portal
+# AZNAG AYOUB - Stage de fin d'etude Annexes
 
-Modern companion website for the annexes referenced by the existing internship report. The report remains a PDF; this portal is only for browsing supporting files such as PDFs, electrical schematics, drawings, SCADA captures, photos, and technical documentation.
+Site personnel de soutenance developed by AZNAG AYOUB. The report remains a PDF; this website is only a companion space for the examiner to consult information, annexes, schematics, PDFs, technical drawings, SCADA captures, photos, and documentation referenced in the rapport de stage.
 
 ## Stack
 

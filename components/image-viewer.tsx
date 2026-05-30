@@ -77,7 +77,7 @@ export function ImageViewer({ annex, onClose }: ImageViewerProps) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] p-1">
+            <div className="flex items-center rounded-xl border border-[#27272A] bg-black p-1">
               <Button size="icon" variant="ghost" title="Zoom out" onClick={() => setZoom((current) => Math.max(0.25, current - 0.25))}>
                 <Minus />
               </Button>
@@ -119,7 +119,7 @@ export function ImageViewer({ annex, onClose }: ImageViewerProps) {
           onPointerUp={() => setDragStart(null)}
           onPointerCancel={() => setDragStart(null)}
         >
-          <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-strong)] px-3 py-2 text-xs font-medium text-[var(--muted-foreground)] backdrop-blur-xl">
+          <div className="absolute left-4 top-4 z-10 flex items-center gap-2 rounded-xl border border-[#27272A] bg-[#111111] px-3 py-2 text-xs font-semibold text-[#A1A1AA] backdrop-blur-xl">
             <Move className="size-3.5" />
             Pan
           </div>

@@ -1,32 +1,54 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import type { LucideIcon } from "lucide-react";
 import {
-  ArrowUpRight,
+  Activity,
+  ArrowRight,
+  BarChart3,
   BookOpen,
   Boxes,
-  Command,
+  CheckCircle2,
+  ChevronRight,
+  Cpu,
+  Database,
   Download,
   File,
   FileText,
-  FolderOpen,
-  GalleryHorizontal,
+  Gauge,
+  HardDrive,
   Image as ImageIcon,
   Layers3,
   Maximize2,
-  PanelTop,
+  Menu,
+  MonitorSmartphone,
+  MoreHorizontal,
+  Network,
   Search,
-  Sparkles,
+  Server,
+  Settings,
+  Shield,
   SquareArrowOutUpRight,
   X,
   Zap,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ImageViewer } from "@/components/image-viewer";
 import { PdfReader } from "@/components/pdf-reader";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AnnexItem } from "@/lib/annexes";
 import { cn } from "@/lib/utils";
 
@@ -43,27 +65,87 @@ type AnnexPortalProps = {
   stats: AnnexStats;
 };
 
-const categories = ["All", "Documents", "Schematics", "Photos", "Data"] as const;
+type Category = "All" | "Documents" | "Schematics" | "Photos" | "Data";
 
-const accentClasses: Record<AnnexItem["accent"], string> = {
-  blue: "from-blue-500/22 to-blue-500/0 text-blue-500",
-  emerald: "from-emerald-500/22 to-emerald-500/0 text-emerald-500",
-  amber: "from-amber-500/24 to-amber-500/0 text-amber-500",
-  rose: "from-rose-500/22 to-rose-500/0 text-rose-500",
-  violet: "from-violet-500/22 to-violet-500/0 text-violet-500",
-};
+const categories: Category[] = ["All", "Documents", "Schematics", "Photos", "Data"];
 
-const typeIcons: Record<AnnexItem["kind"], typeof FileText> = {
+const navItems = [
+  { label: "Accueil", href: "#home" },
+  { label: "Objectif", href: "#features" },
+  { label: "Contexte", href: "#solutions" },
+  { label: "Documents", href: "#documentation" },
+  { label: "AZNAG AYOUB", href: "#contact" },
+];
+
+const typeIcons: Record<AnnexItem["kind"], LucideIcon> = {
   pdf: FileText,
-  schematic: Layers3,
+  schematic: Network,
   image: ImageIcon,
   document: File,
   other: Boxes,
 };
 
+const featureCards: Array<{
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  metric: string;
+}> = [
+  {
+    icon: Database,
+    title: "Annexes du rapport",
+    description: "Les fichiers ajoutes au dossier des annexes apparaissent automatiquement dans cette interface de soutenance.",
+    metric: "Mise a jour simple",
+  },
+  {
+    icon: FileText,
+    title: "Lecture des documents",
+    description: "Les PDF et documentations techniques peuvent etre consultes directement pendant la presentation.",
+    metric: "Consultation rapide",
+  },
+  {
+    icon: Network,
+    title: "Schemas et captures",
+    description: "Les schemas, plans, captures SCADA et images techniques restent accessibles avec zoom et plein ecran.",
+    metric: "Zoom detaille",
+  },
+  {
+    icon: Shield,
+    title: "Rapport conserve en PDF",
+    description: "Ce site ne remplace pas le rapport. Il sert uniquement d'espace personnel pour ses annexes.",
+    metric: "Annexes seulement",
+  },
+  {
+    icon: MonitorSmartphone,
+    title: "Support pour l'examinateur",
+    description: "Monsieur l'examinateur peut trouver rapidement une annexe, l'ouvrir ou la telecharger.",
+    metric: "Soutenance",
+  },
+  {
+    icon: Settings,
+    title: "Interface personnelle",
+    description: "Une interface claire pour accompagner la soutenance du stage de fin d'etude.",
+    metric: "AZNAG AYOUB",
+  },
+];
+
+const dashboardRows = [
+  { name: "Annexe A", type: "PDF", status: "Pret", owner: "Poste 60/22 kV" },
+  { name: "Annexe B", type: "SVG", status: "Indexe", owner: "Schemas electriques" },
+  { name: "Annexe E", type: "Image", status: "Verifie", owner: "Courbes SCADA" },
+  { name: "Annexe F", type: "SVG", status: "Pret", owner: "Centrale de mesure" },
+];
+
+const infrastructureCoverage: Array<{ label: string; value: number; icon: LucideIcon }> = [
+  { label: "Electrique", value: 84, icon: Zap },
+  { label: "Commande", value: 68, icon: Cpu },
+  { label: "Mesure", value: 74, icon: Gauge },
+  { label: "Documents", value: 92, icon: FileText },
+];
+
 export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<(typeof categories)[number]>("All");
+  const [category, setCategory] = useState<Category>("All");
   const [selectedAnnex, setSelectedAnnex] = useState<AnnexItem | null>(null);
 
   const filteredAnnexes = useMemo(() => {
@@ -90,297 +172,546 @@ export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
     });
   }, [annexes, category, query]);
 
-  const documents = annexes.filter((annex) => annex.category === "Documents").slice(0, 4);
-  const schematics = annexes.filter((annex) => annex.category === "Schematics").slice(0, 4);
-  const photos = annexes.filter((annex) => annex.category === "Photos" || annex.category === "Data").slice(0, 4);
+  const documents = annexes.filter((annex) => annex.category === "Documents");
+  const schematics = annexes.filter((annex) => annex.category === "Schematics");
+  const photos = annexes.filter((annex) => annex.category === "Photos" || annex.category === "Data");
   const quickAccess = annexes.slice(0, 5);
-  const heroMetricCards: Array<{ label: string; value: number; Icon: LucideIcon }> = [
-    { label: "PDF", value: stats.documents, Icon: FileText },
-    { label: "SVG", value: stats.schematics, Icon: Layers3 },
-    { label: "Media", value: stats.photos, Icon: GalleryHorizontal },
-  ];
 
   return (
-    <main className="page-grid min-h-screen overflow-hidden text-[var(--foreground)]">
-      <div className="noise text-[var(--foreground)]" />
+    <TooltipProvider delayDuration={120}>
+      <main className="site-grid min-h-screen bg-black text-white">
+        <SiteHeader />
 
-      <header className="sticky top-0 z-40 border-b border-[var(--border)] bg-[var(--background)]/72 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <a href="#top" className="flex min-w-0 items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-2xl bg-[var(--foreground)] text-[var(--background)] shadow-lg">
-              <FolderOpen className="size-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold tracking-tight">Annex Portal</span>
-              <span className="block truncate text-xs text-[var(--muted-foreground)]">Ouansimi companion archive</span>
-            </span>
-          </a>
+        <HeroSection annexes={annexes} stats={stats} query={query} setQuery={setQuery} onOpen={setSelectedAnnex} />
 
-          <nav className="hidden items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] p-1 md:flex">
-            {["Annexes", "Documents", "Schematics", "Photos", "Search"].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="rounded-full px-4 py-2 text-xs font-medium text-[var(--muted-foreground)] transition hover:bg-[var(--surface-strong)] hover:text-[var(--foreground)]"
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
+        <ProjectSummary stats={stats} />
 
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button asChild className="hidden sm:inline-flex">
-              <a href="#annexes">
-                <Zap />
-                Explore
-              </a>
-            </Button>
-          </div>
+        <FeaturesSection />
+
+        <DashboardPreview stats={stats} />
+
+        <AnnexExplorer
+          annexes={filteredAnnexes}
+          category={category}
+          query={query}
+          setCategory={setCategory}
+          setQuery={setQuery}
+          onOpen={setSelectedAnnex}
+        />
+
+        <LibrarySection
+          id="documents"
+          eyebrow="Documents"
+          title="PDF et references techniques"
+          description="Bibliotheque personnelle pour les PDF, fiches techniques et documents cites dans le rapport de stage."
+          annexes={documents.slice(0, 4)}
+          onOpen={setSelectedAnnex}
+        />
+
+        <LibrarySection
+          id="schematics"
+          eyebrow="Schematics"
+          title="Schemas consultables en detail"
+          description="Les schemas electriques et dessins techniques peuvent etre ouverts en plein ecran et zoomes."
+          annexes={schematics.slice(0, 4)}
+          onOpen={setSelectedAnnex}
+        />
+
+        <LibrarySection
+          id="photos"
+          eyebrow="Photos"
+          title="Captures et elements visuels"
+          description="Les captures SCADA, photos et images du stage sont regroupees pour une consultation rapide."
+          annexes={photos.slice(0, 4)}
+          onOpen={setSelectedAnnex}
+        />
+
+        <DocumentationSection />
+
+        <QuickAccess annexes={quickAccess} onOpen={setSelectedAnnex} />
+
+        <SiteFooter />
+
+        <AnimatePresence>
+          {selectedAnnex && <AnnexViewer annex={selectedAnnex} onClose={() => setSelectedAnnex(null)} />}
+        </AnimatePresence>
+      </main>
+    </TooltipProvider>
+  );
+}
+
+function SiteHeader() {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <header
+      className={cn(
+        "sticky top-0 z-40 h-[72px] border-b border-transparent transition-all duration-300",
+        scrolled && "border-[#27272A] bg-black/75 backdrop-blur-xl",
+      )}
+    >
+      <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <a href="#home" className="flex items-center gap-3">
+          <span className="grid size-8 place-items-center rounded-lg border border-[#27272A] bg-white text-black">
+            <Layers3 className="size-4" strokeWidth={2} />
+          </span>
+          <span className="text-sm font-semibold tracking-tight">Soutenance</span>
+        </a>
+
+        <nav className="hidden items-center gap-8 lg:flex">
+          {navItems.map((item) => (
+            <a key={item.href} href={item.href} className="text-sm text-[#A1A1AA] transition hover:text-white">
+              {item.label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="hidden items-center gap-3 lg:flex">
+          <ThemeToggle />
+          <Button asChild variant="ghost">
+            <a href="#annexes">Acces annexes</a>
+          </Button>
+          <Button asChild>
+            <a href="#dashboard">Soutenance</a>
+          </Button>
         </div>
-      </header>
 
-      <section id="top" className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-16 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:pb-20 lg:pt-24">
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="secondary" aria-label="Open navigation">
+                <Menu />
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <div className="mb-10 flex items-center gap-3">
+                <span className="grid size-8 place-items-center rounded-lg border border-[#27272A] bg-white text-black">
+                  <Layers3 className="size-4" />
+                </span>
+                <span className="text-sm font-semibold">Soutenance</span>
+              </div>
+              <nav className="grid gap-2">
+                {navItems.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="rounded-xl px-3 py-3 text-sm font-semibold text-[#A1A1AA] transition hover:bg-white/10 hover:text-white"
+                  >
+                    {item.label}
+                  </a>
+                ))}
+              </nav>
+              <div className="mt-8 grid gap-3">
+                <Button asChild variant="secondary">
+                  <a href="#annexes">Acces annexes</a>
+                </Button>
+                <Button asChild>
+                  <a href="#dashboard">Soutenance</a>
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function HeroSection({
+  annexes,
+  stats,
+  query,
+  setQuery,
+  onOpen,
+}: {
+  annexes: AnnexItem[];
+  stats: AnnexStats;
+  query: string;
+  setQuery: (query: string) => void;
+  onOpen: (annex: AnnexItem) => void;
+}) {
+  const previewAnnexes = annexes.slice(0, 4);
+
+  return (
+    <section id="home" className="hero-gradient border-b border-[#27272A]">
+      <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-20 sm:px-6 lg:px-8 lg:pb-32">
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: "easeOut" }}
-          className="flex flex-col justify-center"
+          className="mx-auto flex max-w-5xl flex-col items-center text-center"
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: {},
+            show: { transition: { staggerChildren: 0.08 } },
+          }}
         >
-          <div className="mb-6 inline-flex w-fit items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-medium text-[var(--muted-foreground)] backdrop-blur-xl">
-            <Sparkles className="size-3.5 text-[var(--accent-blue)]" />
-            Premium annex companion for the existing report
-          </div>
-          <h1 className="max-w-4xl text-balance text-5xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
-            Every annex, drawing and document in one calm reading space.
-          </h1>
-          <p className="mt-6 max-w-2xl text-pretty text-lg leading-8 text-[var(--muted-foreground)]">
-            A modern portal for the examiner to browse referenced files without turning the report into a website.
-          </p>
-
-          <div className="mt-8 max-w-2xl rounded-[28px] border border-[var(--border)] bg-[var(--surface-strong)] p-2 shadow-2xl shadow-black/5 backdrop-blur-xl">
-            <div className="flex items-center gap-3 rounded-[22px] bg-[var(--surface-muted)] px-4 py-3">
-              <Search className="size-5 text-[var(--muted-foreground)]" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search annexes, SCADA captures, schematics..."
-                className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-[var(--muted-foreground)]"
-              />
-              <Command className="hidden size-4 text-[var(--muted-foreground)] sm:block" />
+          <FadeUp>
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#27272A] bg-[#0A0A0A] px-4 py-2 text-sm text-[#A1A1AA]">
+              <SparkIcon />
+              Site personnel de soutenance - Stage de fin d'etude
             </div>
-          </div>
+          </FadeUp>
 
-          <div className="mt-7 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat label="Annexes" value={stats.total} />
-            <Stat label="Documents" value={stats.documents} />
-            <Stat label="Schematics" value={stats.schematics} />
-            <Stat label="Size" value={stats.totalSize} />
-          </div>
+          <FadeUp>
+            <h1 className="max-w-5xl text-balance text-[36px] font-bold leading-[1.05] tracking-[-0.04em] md:text-[48px] lg:text-[72px]">
+              Informations et annexes du rapport de stage, reunies pour la soutenance.
+            </h1>
+          </FadeUp>
+
+          <FadeUp>
+            <p className="mt-6 max-w-3xl text-base leading-[1.7] text-[#A1A1AA] md:text-lg">
+              Ce site est un espace personnel developpe par AZNAG AYOUB pour aider l'examinateur a consulter les
+              documents, schemas, captures et annexes cites dans le rapport de stage.
+            </p>
+          </FadeUp>
+
+          <FadeUp>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild>
+                <a href="#annexes">
+                  Consulter les annexes
+                  <ArrowRight />
+                </a>
+              </Button>
+              <Button asChild variant="secondary">
+                <a href="#documentation">
+                  Documents
+                  <BookOpen />
+                </a>
+              </Button>
+            </div>
+          </FadeUp>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, scale: 0.97, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.65, delay: 0.08, ease: "easeOut" }}
-          className="relative min-h-[520px]"
+          className="mx-auto mt-16 max-w-6xl overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A]"
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
         >
-          <div className="glass-panel absolute inset-x-0 top-10 rounded-[36px] p-4 sm:p-5">
-            <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-strong)] p-3">
-              <div className="mb-3 flex items-center justify-between px-2 py-1">
-                <div className="flex items-center gap-2">
-                  <span className="size-2.5 rounded-full bg-rose-400" />
-                  <span className="size-2.5 rounded-full bg-amber-400" />
-                  <span className="size-2.5 rounded-full bg-emerald-400" />
-                </div>
-                <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs text-[var(--muted-foreground)]">
-                  Annex Explorer
-                </span>
+          <div className="flex h-12 items-center justify-between border-b border-[#27272A] px-4">
+            <div className="flex items-center gap-2">
+              <span className="size-2.5 rounded-full bg-[#3F3F46]" />
+              <span className="size-2.5 rounded-full bg-[#3F3F46]" />
+              <span className="size-2.5 rounded-full bg-[#3F3F46]" />
+            </div>
+            <span className="text-sm text-[#71717A]">Stage de fin d'etude / Annexes</span>
+          </div>
+
+          <div className="grid gap-0 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="border-b border-[#27272A] p-6 lg:border-b-0 lg:border-r">
+              <div className="flex items-center gap-3 rounded-xl border border-[#27272A] bg-[#111111] px-4 py-3">
+                <Search className="size-4 text-[#71717A]" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Rechercher annexes, SCADA, schemas..."
+                  className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-[#71717A]"
+                />
               </div>
 
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <HeroMetric icon={Database} label="Indexed files" value={stats.total} />
+                <HeroMetric icon={FileText} label="Documents" value={stats.documents} />
+                <HeroMetric icon={Network} label="Schematics" value={stats.schematics} />
+                <HeroMetric icon={HardDrive} label="Archive size" value={stats.totalSize} />
+              </div>
+            </div>
+
+            <div className="p-6">
               <div className="grid gap-3">
-                {(quickAccess.length ? quickAccess : fallbackPreviewItems).slice(0, 4).map((annex, index) => (
+                {previewAnnexes.map((annex) => (
                   <button
                     key={annex.id}
-                    onClick={() => {
-                      if ("downloadUrl" in annex) {
-                        setSelectedAnnex(annex);
-                      }
-                    }}
-                    className="group grid grid-cols-[72px_1fr_auto] items-center gap-4 rounded-[22px] border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition hover:-translate-y-0.5 hover:bg-[var(--surface-strong)]"
+                    onClick={() => onOpen(annex)}
+                    className="group grid grid-cols-[44px_1fr_auto] items-center gap-4 rounded-xl border border-[#27272A] bg-[#111111] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[#3F3F46]"
                   >
-                    <MiniPreview annex={annex} />
+                    <AnnexIcon annex={annex} />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">{annex.title}</span>
-                      <span className="mt-1 block truncate text-xs text-[var(--muted-foreground)]">{annex.description}</span>
+                      <span className="block truncate text-sm font-semibold text-white">{annex.title}</span>
+                      <span className="mt-1 block truncate text-sm text-[#71717A]">{annex.description}</span>
                     </span>
-                    <ArrowUpRight className="size-4 text-[var(--muted-foreground)] transition group-hover:text-[var(--foreground)]" />
+                    <ChevronRight className="size-4 text-[#71717A] transition group-hover:text-white" />
                   </button>
                 ))}
               </div>
             </div>
           </div>
-
-          <div className="soft-card absolute bottom-0 left-4 right-4 rounded-[30px] p-5 shadow-2xl lg:left-10 lg:right-10">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Instant file index</span>
-              <span className="rounded-full bg-emerald-500/12 px-3 py-1 text-xs font-medium text-emerald-500">Live</span>
-            </div>
-            <div className="mt-5 grid grid-cols-3 gap-3">
-              {heroMetricCards.map(({ label, value, Icon }) => (
-                <div key={label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)] p-4">
-                  <Icon className="mb-3 size-5 text-[var(--accent-blue)]" />
-                  <p className="text-2xl font-semibold">{value}</p>
-                  <p className="mt-1 text-xs text-[var(--muted-foreground)]">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </motion.div>
-      </section>
+      </div>
+    </section>
+  );
+}
 
-      <section id="summary" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-4 md:grid-cols-3">
-          <InfoTile icon={BookOpen} title="Companion only" text="The PDF report remains the source document. This site organizes the referenced evidence." />
-          <InfoTile icon={PanelTop} title="Examiner first" text="Search, previews and direct actions keep the annex workflow fast during review." />
-          <InfoTile icon={SquareArrowOutUpRight} title="File driven" text="Drop files into public/annexes and the explorer indexes them automatically." />
-        </div>
-      </section>
+function ProjectSummary({ stats }: { stats: AnnexStats }) {
+  const items = [
+    { label: "Annexes disponibles", value: stats.total, icon: Database },
+    { label: "Documents techniques", value: stats.documents, icon: FileText },
+    { label: "Schemas et captures", value: stats.schematics + stats.photos, icon: MonitorSmartphone },
+  ];
 
-      <section id="annexes" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+  return (
+    <section id="solutions" className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+      <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
         <SectionHeading
-          eyebrow="Annexes"
-          title="Annex Explorer"
-          text="Browse PDFs, drawings, photos, captures and documentation from a single responsive index."
+          eyebrow="Contexte"
+          title="Un support personnel pour la soutenance du rapport de stage."
+          description="Le rapport reste sous forme de PDF. Ce site rassemble uniquement les informations utiles, les annexes et les documents techniques pour faciliter la consultation pendant la soutenance."
         />
 
-        <div id="search" className="mt-8 flex flex-col gap-4 rounded-[32px] border border-[var(--border)] bg-[var(--surface)] p-3 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by title, file type, tag or description"
-              className="h-12 w-full rounded-full border border-[var(--border)] bg-[var(--surface-strong)] pl-11 pr-4 text-sm outline-none transition focus:border-transparent focus:ring-2 focus:ring-[var(--ring)]"
-            />
-          </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {items.map((item) => (
+            <Card key={item.label} className="card-hover">
+              <CardHeader>
+                <item.icon className="size-5 text-white" strokeWidth={1.75} />
+                <CardTitle>{item.value}</CardTitle>
+                <CardDescription>{item.label}</CardDescription>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <div className="flex gap-2 overflow-x-auto">
-            {categories.map((item) => (
-              <button
-                key={item}
-                onClick={() => setCategory(item)}
-                className={cn(
-                  "h-11 shrink-0 rounded-full px-4 text-sm font-medium transition",
-                  category === item
-                    ? "bg-[var(--foreground)] text-[var(--background)]"
-                    : "border border-[var(--border)] bg-[var(--surface-strong)] text-[var(--muted-foreground)] hover:text-[var(--foreground)]",
-                )}
-              >
-                {item}
-              </button>
-            ))}
+function FeaturesSection() {
+  return (
+    <section id="features" className="border-y border-[#27272A] bg-[#0A0A0A]">
+      <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+        <SectionHeading
+          eyebrow="Objectif"
+          title="Prepare pour une consultation claire pendant la soutenance."
+          description="L'objectif est de permettre a l'examinateur de retrouver rapidement une annexe, un schema ou une documentation du rapport."
+        />
+
+        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {featureCards.map((feature) => (
+            <Card key={feature.title} className="card-hover">
+              <CardHeader>
+                <div className="mb-4 flex size-10 items-center justify-center rounded-xl border border-[#27272A] bg-black">
+                  <feature.icon className="size-5 text-white" strokeWidth={1.75} />
+                </div>
+                <CardTitle>{feature.title}</CardTitle>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <span className="inline-flex rounded-lg border border-[#27272A] px-3 py-1 text-sm text-[#A1A1AA]">
+                  {feature.metric}
+                </span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DashboardPreview({ stats }: { stats: AnnexStats }) {
+  const metrics = [
+    { label: "Etat du support", value: "Pret", icon: Activity },
+    { label: "Documents", value: stats.documents, icon: FileText },
+    { label: "Elements visuels", value: stats.photos + stats.schematics, icon: BarChart3 },
+    { label: "Taille archive", value: stats.totalSize, icon: Server },
+  ];
+
+  return (
+    <section id="dashboard" className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+      <SectionHeading
+        eyebrow="Apercu soutenance"
+        title="Un resume visuel des annexes et documents disponibles."
+        description="Cette zone presente l'etat des fichiers, les familles de documents et les annexes importantes du rapport de stage."
+      />
+
+      <div className="mt-12 overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A]">
+        <div className="flex h-14 items-center justify-between border-b border-[#27272A] px-5">
+          <div className="flex items-center gap-3">
+            <Gauge className="size-5 text-white" />
+            <span className="text-sm font-semibold">Archive de soutenance</span>
           </div>
+          <span className="rounded-lg border border-[#27272A] px-3 py-1 text-sm text-[#A1A1AA]">Pret</span>
         </div>
 
-        {filteredAnnexes.length ? (
-          <motion.div layout className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-            <AnimatePresence mode="popLayout">
-              {filteredAnnexes.map((annex) => {
-                const openAnnex = () => setSelectedAnnex(annex);
+        <div className="grid gap-0 lg:grid-cols-[1fr_380px]">
+          <div className="border-b border-[#27272A] p-6 lg:border-b-0 lg:border-r">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {metrics.map((metric) => (
+                <Card key={metric.label}>
+                  <CardHeader className="p-4">
+                    <metric.icon className="size-4 text-[#A1A1AA]" />
+                    <p className="text-2xl font-bold tracking-[-0.02em]">{metric.value}</p>
+                    <p className="text-sm text-[#71717A]">{metric.label}</p>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
 
-                return (
-                  <motion.div key={annex.id} layout>
-                    <AnnexCard annex={annex} onOpen={openAnnex} />
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </motion.div>
-        ) : (
-          <div className="mt-8 rounded-[32px] border border-dashed border-[var(--border)] bg-[var(--surface)] p-12 text-center">
-            <Search className="mx-auto mb-4 size-8 text-[var(--muted-foreground)]" />
-            <p className="text-lg font-semibold">No annex matched this search.</p>
-            <p className="mt-2 text-sm text-[var(--muted-foreground)]">Add files to public/annexes or clear the current filters.</p>
+            <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Activite des annexes</CardTitle>
+                  <CardDescription>Fichiers classes par importance pour la soutenance</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex h-56 items-end gap-3 border-b border-l border-[#27272A] px-4 pb-4">
+                    {[44, 76, 52, 88, 63, 94, 72, 80].map((height, index) => (
+                      <div key={index} className="flex flex-1 items-end">
+                        <div className="w-full rounded-t-lg bg-white/80" style={{ height: `${height}%` }} />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Couverture technique</CardTitle>
+                  <CardDescription>Documents classes par domaine technique</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  {infrastructureCoverage.map(({ label, value, icon: Icon }) => (
+                    <div key={label}>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-[#A1A1AA]">
+                          <Icon className="size-4" />
+                          {label}
+                        </span>
+                        <span className="text-white">{value}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-[#27272A]">
+                        <div className="h-full rounded-full bg-white" style={{ width: `${value}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        )}
-      </section>
 
-      <LibrarySection id="documents" eyebrow="Documents" title="PDFs and technical documentation" annexes={documents} onOpen={setSelectedAnnex} />
-      <LibrarySection id="schematics" eyebrow="Schematics" title="Large drawings and electrical plans" annexes={schematics} onOpen={setSelectedAnnex} />
-      <LibrarySection id="photos" eyebrow="Photos" title="Photos, SCADA captures and visual evidence" annexes={photos} onOpen={setSelectedAnnex} />
-
-      <section id="quick-access" className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="glass-panel grid gap-8 rounded-[36px] p-6 md:grid-cols-[0.9fr_1.1fr] md:p-8">
-          <div>
-            <p className="mb-3 text-sm font-medium text-[var(--accent-blue)]">Quick Access</p>
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">The most important annexes stay one click away.</h2>
+          <div className="p-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Annexes principales</CardTitle>
+                <CardDescription>Etat des annexes importantes du rapport</CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-2">
+                {dashboardRows.map((row) => (
+                  <div key={row.name} className="rounded-xl border border-[#27272A] bg-black p-4">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">{row.name}</span>
+                      <span className="flex items-center gap-1.5 text-sm text-[#A1A1AA]">
+                        <CheckCircle2 className="size-4" />
+                        {row.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-[#71717A]">
+                      <span>{row.owner}</span>
+                      <span>{row.type}</span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
           </div>
-          <div className="grid gap-3">
-            {quickAccess.map((annex) => {
-              const Icon = typeIcons[annex.kind];
+        </div>
+      </div>
+    </section>
+  );
+}
 
-              return (
-                <button
-                  key={annex.id}
-                  onClick={() => setSelectedAnnex(annex)}
-                  className="group flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-strong)] p-4 text-left transition hover:-translate-y-0.5 hover:shadow-xl"
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-muted)]">
-                      <Icon className="size-4 text-[var(--accent-blue)]" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">{annex.title}</span>
-                      <span className="block truncate text-xs text-[var(--muted-foreground)]">{annex.description}</span>
-                    </span>
-                  </span>
-                  <ArrowUpRight className="size-4 text-[var(--muted-foreground)] transition group-hover:text-[var(--foreground)]" />
+function AnnexExplorer({
+  annexes,
+  category,
+  query,
+  setCategory,
+  setQuery,
+  onOpen,
+}: {
+  annexes: AnnexItem[];
+  category: Category;
+  query: string;
+  setCategory: (category: Category) => void;
+  setQuery: (query: string) => void;
+  onOpen: (annex: AnnexItem) => void;
+}) {
+  return (
+    <section id="annexes" className="border-y border-[#27272A] bg-[#0A0A0A]">
+      <div className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+        <div id="search" className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
+          <SectionHeading
+            eyebrow="Annexes"
+            title="Explorateur d'annexes"
+            description="Rechercher par titre, type de fichier, tag ou description. Chaque annexe peut etre ouverte, telechargee ou affichee en plein ecran."
+          />
+
+          <div className="rounded-2xl border border-[#27272A] bg-[#111111] p-3">
+            <div className="flex items-center gap-3 rounded-xl border border-[#27272A] bg-black px-4 py-3">
+              <Search className="size-4 text-[#71717A]" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Rechercher annexes, schemas, PDF..."
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#71717A]"
+              />
+              {query && (
+                <button onClick={() => setQuery("")} className="text-[#71717A] transition hover:text-white">
+                  <X className="size-4" />
                 </button>
-              );
-            })}
+              )}
+            </div>
           </div>
         </div>
-      </section>
 
-      <footer className="mx-auto flex max-w-7xl flex-col gap-3 border-t border-[var(--border)] px-4 py-10 text-sm text-[var(--muted-foreground)] sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-        <p>Ouansimi Annex Portal</p>
-        <p>Files are indexed from /public/annexes.</p>
-      </footer>
+        <Tabs value={category} onValueChange={(value) => setCategory(value as Category)} className="mt-8">
+          <TabsList className="max-w-full overflow-x-auto">
+            {categories.map((item) => (
+              <TabsTrigger key={item} value={item}>
+                {item}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      <AnimatePresence>
-        {selectedAnnex && <AnnexViewer annex={selectedAnnex} onClose={() => setSelectedAnnex(null)} />}
-      </AnimatePresence>
-    </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 backdrop-blur-xl">
-      <p className="text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-xs font-medium text-[var(--muted-foreground)]">{label}</p>
-    </div>
-  );
-}
-
-function InfoTile({ icon: Icon, title, text }: { icon: typeof BookOpen; title: string; text: string }) {
-  return (
-    <div className="soft-card rounded-[28px] p-6 transition hover:-translate-y-1">
-      <Icon className="mb-5 size-6 text-[var(--accent-blue)]" />
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{text}</p>
-    </div>
-  );
-}
-
-function SectionHeading({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
-  return (
-    <div className="max-w-3xl">
-      <p className="mb-3 text-sm font-medium text-[var(--accent-blue)]">{eyebrow}</p>
-      <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">{title}</h2>
-      <p className="mt-4 text-lg leading-8 text-[var(--muted-foreground)]">{text}</p>
-    </div>
+          {categories.map((item) => (
+            <TabsContent key={item} value={item}>
+              {annexes.length ? (
+                <motion.div layout className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <AnimatePresence mode="popLayout">
+                    {annexes.map((annex) => (
+                      <motion.div
+                        key={annex.id}
+                        layout
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <AnnexCard annex={annex} onOpen={() => onOpen(annex)} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              ) : (
+                <Card>
+                  <CardHeader className="items-center py-16 text-center">
+                    <Search className="size-8 text-[#71717A]" />
+                    <CardTitle>Aucune annexe ne correspond a cette recherche.</CardTitle>
+                    <CardDescription>Ajouter les fichiers dans public/annexes ou vider les filtres actuels.</CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
+    </section>
   );
 }
 
@@ -388,109 +719,89 @@ function AnnexCard({ annex, onOpen }: { annex: AnnexItem; onOpen: () => void }) 
   const Icon = typeIcons[annex.kind];
 
   return (
-    <motion.article
-      layout
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      className="group soft-card overflow-hidden rounded-[30px] transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
-    >
+    <Card className="card-hover h-full overflow-hidden">
       <button onClick={onOpen} className="block w-full text-left">
         <AnnexPreview annex={annex} />
       </button>
-      <div className="p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--muted-foreground)]">
-                <Icon className="size-3.5" />
-                {annex.extension}
-              </span>
-              <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-medium text-[var(--muted-foreground)]">
-                {annex.size}
-              </span>
-            </div>
-            <h3 className="truncate text-xl font-semibold tracking-tight">{annex.title}</h3>
-            <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--muted-foreground)]">{annex.description}</p>
-          </div>
-        </div>
 
-        <div className="mb-5 flex flex-wrap gap-2">
+      <CardHeader>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="inline-flex items-center gap-2 rounded-lg border border-[#27272A] px-3 py-1 text-sm text-[#A1A1AA]">
+            <Icon className="size-4" />
+            {annex.extension}
+          </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon" variant="ghost" aria-label="Annex actions">
+                <MoreHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onOpen}>
+                <SquareArrowOutUpRight className="size-4" />
+                Ouvrir
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={annex.downloadUrl} download>
+                  <Download className="size-4" />
+                  Telecharger
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onOpen}>
+                <Maximize2 className="size-4" />
+                Plein ecran
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <CardTitle>{annex.title}</CardTitle>
+        <CardDescription>{annex.description}</CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <div className="mb-6 flex flex-wrap gap-2">
           {annex.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs text-[var(--muted-foreground)]">
+            <span key={tag} className="rounded-lg border border-[#27272A] px-2.5 py-1 text-sm text-[#71717A]">
               {tag}
             </span>
           ))}
         </div>
 
         <div className="grid grid-cols-3 gap-2">
-          <Button size="sm" variant="secondary" onClick={onOpen}>
-            <SquareArrowOutUpRight />
-            Open
-          </Button>
-          <Button asChild size="sm" variant="secondary">
-            <a href={annex.downloadUrl} download>
-              <Download />
-              Download
-            </a>
-          </Button>
-          <Button size="sm" variant="secondary" onClick={onOpen}>
-            <Maximize2 />
-            Fullscreen
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="sm" variant="subtle" onClick={onOpen}>
+                <SquareArrowOutUpRight />
+                Ouvrir
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Ouvrir le lecteur</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button asChild size="sm" variant="subtle">
+                <a href={annex.downloadUrl} download>
+                  <Download />
+                  Telecharger
+                </a>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Telecharger le fichier</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button size="sm" variant="subtle" onClick={onOpen}>
+                <Maximize2 />
+                Plein ecran
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Mode plein ecran</TooltipContent>
+          </Tooltip>
         </div>
-      </div>
-    </motion.article>
-  );
-}
-
-function AnnexPreview({ annex }: { annex: AnnexItem }) {
-  const Icon = typeIcons[annex.kind];
-
-  if ((annex.kind === "image" || annex.kind === "schematic") && annex.href) {
-    return (
-      <div className="relative aspect-[16/10] overflow-hidden bg-[var(--surface-muted)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={annex.href} alt={annex.description} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/28 via-transparent to-transparent" />
-      </div>
-    );
-  }
-
-  return (
-    <div className={cn("relative aspect-[16/10] overflow-hidden bg-gradient-to-br p-5", accentClasses[annex.accent])}>
-      <div className="absolute inset-0 preview-grid opacity-60" />
-      <div className="relative flex h-full flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-strong)] p-5 shadow-xl">
-        <div className="flex items-center justify-between">
-          <Icon className="size-7" />
-          <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold">{annex.extension}</span>
-        </div>
-        <div className="space-y-2">
-          <div className="h-2 w-3/4 rounded-full bg-[var(--foreground)]/18" />
-          <div className="h-2 rounded-full bg-[var(--foreground)]/10" />
-          <div className="h-2 w-1/2 rounded-full bg-[var(--foreground)]/10" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MiniPreview({ annex }: { annex: Pick<AnnexItem, "kind" | "href" | "description" | "extension" | "accent"> }) {
-  const Icon = typeIcons[annex.kind];
-
-  if (annex.kind === "image" || annex.kind === "schematic") {
-    return (
-      <span className="block aspect-square overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-muted)]">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={annex.href} alt={annex.description} className="h-full w-full object-cover" />
-      </span>
-    );
-  }
-
-  return (
-    <span className={cn("flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br", accentClasses[annex.accent])}>
-      <Icon className="size-6" />
-    </span>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -498,12 +809,14 @@ function LibrarySection({
   id,
   eyebrow,
   title,
+  description,
   annexes,
   onOpen,
 }: {
   id: string;
   eyebrow: string;
   title: string;
+  description: string;
   annexes: AnnexItem[];
   onOpen: (annex: AnnexItem) => void;
 }) {
@@ -512,39 +825,203 @@ function LibrarySection({
   }
 
   return (
-    <section id={id} className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-      <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <SectionHeading eyebrow={eyebrow} title={title} text="Curated from the same auto-generated annex index." />
+    <section id={id} className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <SectionHeading eyebrow={eyebrow} title={title} description={description} />
         <Button asChild variant="secondary">
           <a href="#annexes">
-            View all
-            <ArrowUpRight />
+            Voir tout
+            <ArrowRight />
           </a>
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {annexes.map((annex) => {
-          const Icon = typeIcons[annex.kind];
-
-          return (
-            <button
-              key={annex.id}
-              onClick={() => onOpen(annex)}
-              className="group soft-card rounded-[28px] p-4 text-left transition hover:-translate-y-1 hover:shadow-2xl"
-            >
-              <MiniPreview annex={annex} />
-              <div className="mt-4 flex items-center gap-2 text-xs font-medium text-[var(--muted-foreground)]">
-                <Icon className="size-3.5" />
-                {annex.extension} · {annex.size}
-              </div>
-              <h3 className="mt-2 truncate text-base font-semibold">{annex.title}</h3>
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--muted-foreground)]">{annex.description}</p>
-            </button>
-          );
-        })}
+      <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {annexes.map((annex) => (
+          <button key={annex.id} onClick={() => onOpen(annex)} className="text-left">
+            <Card className="card-hover h-full">
+              <CardHeader>
+                <AnnexIcon annex={annex} />
+                <CardTitle className="mt-6 truncate">{annex.title}</CardTitle>
+                <CardDescription>{annex.description}</CardDescription>
+              </CardHeader>
+            </Card>
+          </button>
+        ))}
       </div>
     </section>
+  );
+}
+
+function DocumentationSection() {
+  return (
+    <section id="documentation" className="border-y border-[#27272A] bg-[#0A0A0A]">
+      <div className="mx-auto grid max-w-[1200px] gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <SectionHeading
+          eyebrow="Documents"
+          title="Gestion simple des annexes du rapport."
+          description="Le site est personnel et base sur les fichiers. Il suffit d'ajouter les annexes dans le dossier dedie pour les rendre consultables."
+        />
+
+        <Card>
+          <CardContent className="p-6">
+            <Accordion type="single" collapsible defaultValue="item-1">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>Comment ajouter une nouvelle annexe ?</AccordionTrigger>
+                <AccordionContent>
+                  Placer le fichier dans <code className="rounded bg-black px-1.5 py-1 text-white">public/annexes</code>.
+                  Les PDF, SVG, images et documents courants sont indexes automatiquement.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger>Est-ce que ce site remplace le rapport ?</AccordionTrigger>
+                <AccordionContent>
+                  Non. Le rapport de stage reste un PDF. Ce site aide seulement l'examinateur a consulter les annexes,
+                  informations et documents references dans ce rapport.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger>Quels types de fichiers sont acceptes ?</AccordionTrigger>
+                <AccordionContent>
+                  Les fichiers PDF, SVG, PNG, JPG, WEBP, GIF, TIFF, DOC, DOCX, XLS, XLSX, CSV et TXT sont pris en
+                  charge par l'index automatique.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
+function QuickAccess({ annexes, onOpen }: { annexes: AnnexItem[]; onOpen: (annex: AnnexItem) => void }) {
+  return (
+    <section className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+      <div className="rounded-2xl border border-[#27272A] bg-[#111111] p-6 md:p-8">
+        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+          <SectionHeading
+            eyebrow="Acces rapide"
+            title="Les annexes importantes restent accessibles rapidement."
+            description="Un index compact pour les fichiers que l'examinateur peut vouloir consulter en premier pendant la soutenance."
+          />
+
+          <div className="grid gap-3">
+            {annexes.map((annex) => (
+              <button
+                key={annex.id}
+                onClick={() => onOpen(annex)}
+                className="group grid grid-cols-[44px_1fr_auto] items-center gap-4 rounded-xl border border-[#27272A] bg-black p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-[#3F3F46]"
+              >
+                <AnnexIcon annex={annex} />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{annex.title}</span>
+                  <span className="block truncate text-sm text-[#71717A]">{annex.description}</span>
+                </span>
+                <ChevronRight className="size-4 text-[#71717A] transition group-hover:text-white" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer id="contact" className="border-t border-[#27272A] bg-black">
+      <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 py-12 text-sm text-[#71717A] sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+        <div>
+          <p className="font-semibold text-white">Stage de fin d'etude - Annexes</p>
+          <p className="mt-1">Website developed by AZNAG AYOUB for the stage de fin d'etude soutenance.</p>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          <a href="#features" className="transition hover:text-white">
+            Objectif
+          </a>
+          <a href="#documentation" className="transition hover:text-white">
+            Documents
+          </a>
+          <a href="#annexes" className="transition hover:text-white">
+            Annexes
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="max-w-3xl">
+      <p className="mb-4 text-sm font-semibold text-[#A1A1AA]">{eyebrow}</p>
+      <h2 className="text-balance text-[32px] font-bold leading-tight tracking-[-0.03em] sm:text-[40px]">{title}</h2>
+      <p className="mt-4 text-base leading-[1.7] text-[#A1A1AA]">{description}</p>
+    </div>
+  );
+}
+
+function HeroMetric({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string | number }) {
+  return (
+    <div className="rounded-xl border border-[#27272A] bg-black p-4">
+      <Icon className="mb-4 size-5 text-[#A1A1AA]" strokeWidth={1.75} />
+      <p className="text-2xl font-bold tracking-[-0.02em]">{value}</p>
+      <p className="mt-1 text-sm text-[#71717A]">{label}</p>
+    </div>
+  );
+}
+
+function AnnexIcon({ annex }: { annex: AnnexItem }) {
+  const Icon = typeIcons[annex.kind];
+
+  return (
+    <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-[#27272A] bg-black text-white">
+      <Icon className="size-5" strokeWidth={1.75} />
+    </span>
+  );
+}
+
+function AnnexPreview({ annex }: { annex: AnnexItem }) {
+  const Icon = typeIcons[annex.kind];
+
+  if (annex.kind === "image" || annex.kind === "schematic") {
+    return (
+      <div className="relative aspect-[16/10] overflow-hidden border-b border-[#27272A] bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={annex.href}
+          alt={annex.description}
+          loading="lazy"
+          className="h-full w-full object-cover grayscale transition duration-300 group-hover:scale-[1.02] group-hover:grayscale-0"
+        />
+        <div className="absolute inset-0 bg-black/10" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="preview-grid aspect-[16/10] border-b border-[#27272A] bg-black p-6">
+      <div className="flex h-full flex-col justify-between rounded-xl border border-[#27272A] bg-[#111111] p-5">
+        <div className="flex items-center justify-between">
+          <Icon className="size-7 text-white" strokeWidth={1.75} />
+          <span className="rounded-lg border border-[#27272A] px-2 py-1 text-sm text-[#A1A1AA]">{annex.extension}</span>
+        </div>
+        <div className="space-y-2">
+          <div className="h-2 w-3/4 rounded-full bg-white/20" />
+          <div className="h-2 rounded-full bg-white/10" />
+          <div className="h-2 w-1/2 rounded-full bg-white/10" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -569,40 +1046,40 @@ function AnnexViewer({ annex, onClose }: { annex: AnnexItem; onClose: () => void
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/42 p-4 backdrop-blur-xl"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
     >
       <motion.div
-        className="soft-card w-full max-w-lg rounded-[32px] p-6"
-        initial={{ scale: 0.96, y: 16 }}
+        className="w-full max-w-lg rounded-2xl border border-[#27272A] bg-[#111111] p-6 text-white"
+        initial={{ scale: 0.98, y: 16 }}
         animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.96, y: 16 }}
+        exit={{ scale: 0.98, y: 16 }}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-[var(--surface-muted)]">
-            <Icon className="size-7 text-[var(--accent-blue)]" />
+        <div className="mb-8 flex items-start justify-between gap-4">
+          <span className="grid size-12 place-items-center rounded-xl border border-[#27272A] bg-black">
+            <Icon className="size-6" />
           </span>
           <Button size="icon" variant="ghost" onClick={onClose} title="Close">
             <X />
           </Button>
         </div>
-        <h3 className="text-2xl font-semibold tracking-tight">{annex.title}</h3>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{annex.description}</p>
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <h3 className="text-xl font-semibold">{annex.title}</h3>
+        <p className="mt-3 text-base leading-[1.7] text-[#A1A1AA]">{annex.description}</p>
+        <div className="mt-8 grid grid-cols-2 gap-3">
           <Button asChild variant="secondary">
             <a href={annex.href} target="_blank" rel="noreferrer">
               <SquareArrowOutUpRight />
-              Open
+              Ouvrir
             </a>
           </Button>
           <Button asChild>
             <a href={annex.downloadUrl} download>
               <Download />
-              Download
+              Telecharger
             </a>
           </Button>
         </div>
@@ -611,41 +1088,25 @@ function AnnexViewer({ annex, onClose }: { annex: AnnexItem; onClose: () => void
   );
 }
 
-const fallbackPreviewItems = [
-  {
-    id: "fallback-a",
-    title: "Annexe A",
-    description: "Poste principal 60/22 kV",
-    kind: "pdf",
-    href: "",
-    extension: "PDF",
-    accent: "blue",
-  },
-  {
-    id: "fallback-b",
-    title: "Annexe B",
-    description: "Schemas electriques",
-    kind: "schematic",
-    href: "",
-    extension: "SVG",
-    accent: "emerald",
-  },
-  {
-    id: "fallback-e",
-    title: "Annexe E",
-    description: "Courbes SCADA",
-    kind: "image",
-    href: "",
-    extension: "PNG",
-    accent: "amber",
-  },
-  {
-    id: "fallback-f",
-    title: "Annexe F",
-    description: "Centrale de mesure",
-    kind: "document",
-    href: "",
-    extension: "DOC",
-    accent: "rose",
-  },
-] satisfies Array<Pick<AnnexItem, "id" | "title" | "description" | "kind" | "href" | "extension" | "accent">>;
+function FadeUp({ children }: { children: ReactNode }) {
+  return (
+    <motion.div
+      variants={{
+        hidden: { opacity: 0, y: 16 },
+        show: { opacity: 1, y: 0 },
+      }}
+      transition={{ duration: 0.45, ease: "easeOut" }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <span className="relative flex size-2.5">
+      <span className="absolute inline-flex h-full w-full rounded-full bg-white/40 opacity-75" />
+      <span className="relative inline-flex size-2.5 rounded-full bg-white" />
+    </span>
+  );
+}

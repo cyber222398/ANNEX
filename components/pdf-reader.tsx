@@ -136,7 +136,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search in PDF"
-                className="h-10 w-full rounded-full border border-[var(--border)] bg-[var(--surface)] pl-10 pr-4 text-sm outline-none transition focus:border-transparent focus:ring-2 focus:ring-[var(--ring)]"
+                className="h-10 w-full rounded-xl border border-[#27272A] bg-black pl-10 pr-4 text-sm outline-none transition focus:border-transparent focus:ring-2 focus:ring-white/30"
               />
             </form>
 
@@ -157,7 +157,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                 <FileSearch />
                 Fit page
               </Button>
-              <div className="flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] p-1">
+              <div className="flex items-center rounded-xl border border-[#27272A] bg-black p-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -182,7 +182,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                   <Plus />
                 </Button>
               </div>
-              <div className="flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] p-1">
+              <div className="flex items-center rounded-xl border border-[#27272A] bg-black p-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -206,8 +206,8 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
             </div>
           </div>
 
-          <div className="h-1 overflow-hidden rounded-full bg-[var(--surface-muted)]">
-            <div className="h-full rounded-full bg-[var(--accent-blue)] transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-1 overflow-hidden rounded-full bg-[#27272A]">
+            <div className="h-full rounded-full bg-white transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
@@ -230,8 +230,8 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                     className={cn(
                       "group rounded-2xl border p-2 text-left transition-all",
                       isActive
-                        ? "border-[var(--accent-blue)] bg-[rgba(47,109,246,0.1)]"
-                        : "border-[var(--border)] bg-[var(--surface-strong)] hover:-translate-y-0.5 hover:border-[rgba(47,109,246,0.42)]",
+                        ? "border-white bg-white/10"
+                        : "border-[#27272A] bg-[#111111] hover:-translate-y-0.5 hover:border-[#3F3F46]",
                     )}
                   >
                     <div className="preview-grid aspect-[4/5] rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] p-3">
@@ -242,7 +242,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                         <div className="h-1.5 w-2/3 rounded-full bg-[var(--foreground)]/10" />
                       </div>
                     </div>
-                    <p className="mt-2 text-center text-xs font-medium text-[var(--muted-foreground)]">Page {pageNumber}</p>
+                    <p className="mt-2 text-center text-xs font-semibold text-[var(--muted-foreground)]">Page {pageNumber}</p>
                   </button>
                 );
               })}
