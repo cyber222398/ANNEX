@@ -40,6 +40,8 @@ const supportedExtensions = new Set([
   ".xlsx",
   ".csv",
   ".txt",
+  ".html",
+  ".htm",
 ]);
 
 const knownAnnexes: Array<{
@@ -133,7 +135,7 @@ function classifyAnnex(extension: string, filename: string): Pick<AnnexItem, "ki
       : { kind: "image", category: "Photos" };
   }
 
-  if ([".doc", ".docx", ".xls", ".xlsx", ".csv", ".txt"].includes(extension)) {
+  if ([".doc", ".docx", ".xls", ".xlsx", ".csv", ".txt", ".html", ".htm"].includes(extension)) {
     return { kind: "document", category: "Documents" };
   }
 
