@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -27,18 +27,19 @@ type PdfReaderProps = {
 };
 
 type LoadState = "loading" | "ready" | "error";
-type RenderState = "idle" | "rendering" | "error";
-type PdfJsModule = typeof import("pdfjs-dist");
-type PDFDocumentProxy = import("pdfjs-dist").PDFDocumentProxy;
+type FitMode = "custom" | "width" | "page";
+type PdfJsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
+type PDFDocumentProxy = import("pdfjs-dist/legacy/build/pdf.mjs").PDFDocumentProxy;
 type PDFDocumentLoadingTask = ReturnType<PdfJsModule["getDocument"]>;
-type PDFPageProxy = import("pdfjs-dist").PDFPageProxy;
-type RenderTask = import("pdfjs-dist").RenderTask;
+type PDFPageProxy = import("pdfjs-dist/legacy/build/pdf.mjs").PDFPageProxy;
+type RenderTask = import("pdfjs-dist/legacy/build/pdf.mjs").RenderTask;
+type PreviewPage = NonNullable<AnnexItem["previewPages"]>[number];
 
 let pdfJsPromise: Promise<PdfJsModule> | null = null;
 
 function getPdfJs() {
-  pdfJsPromise ??= import("pdfjs-dist").then((pdfjs) => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
+  pdfJsPromise ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
     return pdfjs;
   });
 
@@ -53,35 +54,60 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "The PDF could not be loaded.";
 }
 
+function getPreviewBasePageSize(pages: PreviewPage[]) {
+  if (!pages.length) {
+    return { width: 612, height: 792 };
+  }
+
+  return pages.reduce(
+    (largest, page) => ({
+      width: Math.max(largest.width, page.width),
+      height: Math.max(largest.height, page.height),
+    }),
+    { width: 1, height: 1 },
+  );
+}
+
 export function PdfReader({ annex, onClose }: PdfReaderProps) {
+  const previewPages = useMemo(() => annex.previewPages ?? [], [annex.previewPages]);
+  const hasPreviewPages = previewPages.length > 0;
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
-  const [loadState, setLoadState] = useState<LoadState>("loading");
-  const [renderState, setRenderState] = useState<RenderState>("idle");
+  const [loadState, setLoadState] = useState<LoadState>(hasPreviewPages ? "ready" : "loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [page, setPage] = useState(1);
-  const [pageCount, setPageCount] = useState(1);
+  const [pageCount, setPageCount] = useState(previewPages.length || 1);
   const [zoom, setZoom] = useState(100);
-  const [fit, setFit] = useState<"custom" | "width" | "page">("width");
+  const [fit, setFit] = useState<FitMode>("width");
+  const [scale, setScale] = useState(1);
   const [search, setSearch] = useState("");
   const [searchMessage, setSearchMessage] = useState("");
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [resizeToken, setResizeToken] = useState(0);
+  const [basePageSize, setBasePageSize] = useState(getPreviewBasePageSize(previewPages));
 
   const shellRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const renderTaskRef = useRef<RenderTask | null>(null);
+  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const loadPdf = useCallback(() => {
     let cancelled = false;
     let loadingTask: PDFDocumentLoadingTask | null = null;
 
-    setLoadState("loading");
-    setRenderState("idle");
     setErrorMessage("");
     setSearchMessage("");
     setPdfDoc(null);
     setPage(1);
+
+    if (previewPages.length) {
+      setPageCount(previewPages.length);
+      setBasePageSize(getPreviewBasePageSize(previewPages));
+      setLoadState("ready");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setLoadState("loading");
 
     getPdfJs()
       .then((pdfjs) => {
@@ -89,10 +115,15 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
           return null;
         }
 
-        loadingTask = pdfjs.getDocument({ url: annex.href });
+        loadingTask = pdfjs.getDocument({
+          url: annex.href,
+          canvasMaxAreaInBytes: -1,
+          isImageDecoderSupported: false,
+          isOffscreenCanvasSupported: false,
+        });
         return loadingTask.promise;
       })
-      .then((document) => {
+      .then(async (document) => {
         if (!document) {
           return;
         }
@@ -102,9 +133,15 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
           return;
         }
 
-        setPdfDoc(document);
-        setPageCount(document.numPages);
-        setLoadState("ready");
+        const firstPage = await document.getPage(1);
+        const viewport = firstPage.getViewport({ scale: 1 });
+
+        if (!cancelled) {
+          setPdfDoc(document);
+          setPageCount(document.numPages);
+          setBasePageSize({ width: viewport.width, height: viewport.height });
+          setLoadState("ready");
+        }
       })
       .catch((error: unknown) => {
         if (cancelled) {
@@ -119,7 +156,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
       cancelled = true;
       void loadingTask?.destroy();
     };
-  }, [annex.href]);
+  }, [annex.href, previewPages]);
 
   useEffect(() => loadPdf(), [loadPdf]);
 
@@ -129,12 +166,12 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
         onClose();
       }
 
-      if (event.key === "ArrowRight") {
-        setPage((current) => Math.min(pageCount, current + 1));
+      if (event.key === "ArrowRight" || event.key === "PageDown") {
+        scrollToPage(Math.min(pageCount, page + 1));
       }
 
-      if (event.key === "ArrowLeft") {
-        setPage((current) => Math.max(1, current - 1));
+      if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        scrollToPage(Math.max(1, page - 1));
       }
 
       if (event.key === "+" || event.key === "=") {
@@ -150,7 +187,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, pageCount]);
+  }, [onClose, page, pageCount]);
 
   useEffect(() => {
     function handleResize() {
@@ -162,71 +199,57 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
   }, []);
 
   useEffect(() => {
-    if (!pdfDoc || loadState !== "ready") {
+    const viewport = viewportRef.current;
+    if (!viewport || loadState !== "ready") {
       return;
     }
 
-    let cancelled = false;
+    const horizontalPadding = window.innerWidth < 640 ? 24 : 64;
+    const verticalPadding = window.innerWidth < 640 ? 24 : 64;
+    const availableWidth = Math.max(280, viewport.clientWidth - horizontalPadding);
+    const availableHeight = Math.max(360, viewport.clientHeight - verticalPadding);
+    const fitWidthScale = availableWidth / basePageSize.width;
+    const fitPageScale = Math.min(fitWidthScale, availableHeight / basePageSize.height);
+    const nextScale = fit === "width" ? fitWidthScale : fit === "page" ? fitPageScale : zoom / 100;
 
-    async function renderPage() {
-      const canvas = canvasRef.current;
-      const viewportElement = viewportRef.current;
+    setScale(Math.max(hasPreviewPages ? 0.05 : 0.2, Math.min(nextScale, 4)));
+  }, [basePageSize.height, basePageSize.width, fit, hasPreviewPages, loadState, resizeToken, zoom]);
 
-      if (!canvas || !viewportElement || !pdfDoc) {
-        return;
-      }
-
-      renderTaskRef.current?.cancel();
-      setRenderState("rendering");
-
-      try {
-        const pdfPage: PDFPageProxy = await pdfDoc.getPage(page);
-        const baseViewport = pdfPage.getViewport({ scale: 1 });
-        const availableWidth = Math.max(viewportElement.clientWidth - 48, 320);
-        const availableHeight = Math.max(viewportElement.clientHeight - 48, 420);
-        const fitWidthScale = availableWidth / baseViewport.width;
-        const fitPageScale = Math.min(fitWidthScale, availableHeight / baseViewport.height);
-        const scale = fit === "width" ? fitWidthScale : fit === "page" ? fitPageScale : zoom / 100;
-        const safeScale = Math.max(0.2, Math.min(scale, 4));
-        const viewport = pdfPage.getViewport({ scale: safeScale });
-        const context = canvas.getContext("2d");
-
-        if (!context) {
-          throw new Error("Canvas rendering is not available in this browser.");
-        }
-
-        const outputScale = window.devicePixelRatio || 1;
-        canvas.width = Math.floor(viewport.width * outputScale);
-        canvas.height = Math.floor(viewport.height * outputScale);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
-        context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
-        context.clearRect(0, 0, viewport.width, viewport.height);
-
-        const renderTask = pdfPage.render({ canvas, canvasContext: context, viewport });
-        renderTaskRef.current = renderTask;
-        await renderTask.promise;
-
-        if (!cancelled) {
-          setRenderState("idle");
-        }
-      } catch (error: unknown) {
-        if (cancelled || (error instanceof Error && error.name === "RenderingCancelledException")) {
-          return;
-        }
-
-        setRenderState("error");
-        setErrorMessage(getErrorMessage(error));
-      }
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || loadState !== "ready") {
+      return;
     }
 
-    void renderPage();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => ({
+            pageNumber: Number((entry.target as HTMLElement).dataset.pageNumber),
+            top: Math.abs(entry.boundingClientRect.top - viewport.getBoundingClientRect().top),
+          }))
+          .sort((a, b) => a.top - b.top);
 
-    return () => {
-      cancelled = true;
-      renderTaskRef.current?.cancel();
-    };
-  }, [fit, loadState, page, pdfDoc, resizeToken, zoom]);
+        if (visible[0]?.pageNumber) {
+          setPage(visible[0].pageNumber);
+        }
+      },
+      { root: viewport, threshold: 0.42 },
+    );
+
+    Object.values(pageRefs.current).forEach((element) => {
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [loadState, pageCount]);
+
+  function scrollToPage(pageNumber: number) {
+    pageRefs.current[pageNumber]?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
 
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -249,8 +272,8 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
           .toLowerCase();
 
         if (text.includes(query)) {
-          setPage(pageNumber);
           setSearchMessage(`Found on page ${pageNumber}`);
+          scrollToPage(pageNumber);
           return;
         }
       }
@@ -261,14 +284,15 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
     }
   }
 
+  const pageNumbers = useMemo(() => Array.from({ length: pageCount }, (_, index) => index + 1), [pageCount]);
   const progress = Math.round((page / pageCount) * 100);
 
   return (
-    <div ref={shellRef} className="fixed inset-0 z-50 bg-[var(--background)] text-[var(--foreground)]">
+    <div ref={shellRef} className="fixed inset-0 z-50 h-[100dvh] bg-[var(--background)] text-[var(--foreground)]">
       <div className="flex h-full flex-col">
-        <div className="flex flex-col gap-3 border-b border-[var(--border)] bg-[var(--surface-strong)]/88 px-3 py-3 backdrop-blur-xl lg:px-5">
+        <div className="shrink-0 border-b border-[var(--border)] bg-[var(--surface-strong)]/92 px-3 py-3 backdrop-blur-xl lg:px-5">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <Button
                 size="icon"
                 variant="ghost"
@@ -283,7 +307,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
               </div>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <Button asChild size="icon" variant="ghost" title="Open original PDF">
                 <a href={annex.href} target="_blank" rel="noreferrer">
                   <ExternalLink />
@@ -298,6 +322,7 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                 size="icon"
                 variant="ghost"
                 title="Fullscreen"
+                className="hidden sm:inline-flex"
                 onClick={() => shellRef.current?.requestFullscreen?.()}
               >
                 <Maximize2 />
@@ -308,38 +333,37 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <form className="relative max-w-xl flex-1" onSubmit={handleSearch}>
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search in PDF"
-                className="h-10 w-full rounded-xl border border-[#27272A] bg-black pl-10 pr-4 text-sm outline-none transition focus:border-transparent focus:ring-2 focus:ring-white/30"
-              />
-              {searchMessage && (
-                <span className="absolute left-3 top-full mt-1 text-xs text-[#A1A1AA]">{searchMessage}</span>
-              )}
-            </form>
+          <div
+            className={cn(
+              "mt-3 grid gap-3 xl:items-center",
+              !hasPreviewPages && "xl:grid-cols-[minmax(240px,1fr)_auto]",
+            )}
+          >
+            {!hasPreviewPages && (
+              <form className="relative min-w-0" onSubmit={handleSearch}>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--muted-foreground)]" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search in PDF"
+                  className="h-10 w-full rounded-xl border border-[#27272A] bg-black pl-10 pr-4 text-sm outline-none transition focus:border-transparent focus:ring-2 focus:ring-white/30"
+                />
+                {searchMessage && (
+                  <span className="absolute left-3 top-full mt-1 text-xs text-[#A1A1AA]">{searchMessage}</span>
+                )}
+              </form>
+            )}
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant={fit === "width" ? "default" : "secondary"}
-                onClick={() => setFit("width")}
-              >
+              <Button size="sm" variant={fit === "width" ? "default" : "secondary"} onClick={() => setFit("width")}>
                 <Expand />
-                Fit width
+                Width
               </Button>
-              <Button
-                size="sm"
-                variant={fit === "page" ? "default" : "secondary"}
-                onClick={() => setFit("page")}
-              >
+              <Button size="sm" variant={fit === "page" ? "default" : "secondary"} onClick={() => setFit("page")}>
                 <FileSearch />
-                Fit page
+                Page
               </Button>
-              <div className="flex items-center rounded-xl border border-[#27272A] bg-black p-1">
+              <div className="flex shrink-0 items-center rounded-xl border border-[#27272A] bg-black p-1">
                 <Button
                   size="icon"
                   variant="ghost"
@@ -364,31 +388,21 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
                   <Plus />
                 </Button>
               </div>
-              <div className="flex items-center rounded-xl border border-[#27272A] bg-black p-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="Previous page"
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
-                >
+              <div className="flex shrink-0 items-center rounded-xl border border-[#27272A] bg-black p-1">
+                <Button size="icon" variant="ghost" title="Previous page" onClick={() => scrollToPage(Math.max(1, page - 1))}>
                   <ChevronLeft />
                 </Button>
                 <span className="min-w-20 text-center text-xs font-semibold">
                   {page} / {pageCount}
                 </span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  title="Next page"
-                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
-                >
+                <Button size="icon" variant="ghost" title="Next page" onClick={() => scrollToPage(Math.min(pageCount, page + 1))}>
                   <ChevronRight />
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className="h-1 overflow-hidden rounded-full bg-[#27272A]">
+          <div className="mt-2 h-1 overflow-hidden rounded-full bg-[#27272A]">
             <div className="h-full rounded-full bg-white transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
@@ -401,14 +415,13 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
             )}
           >
             <div className="grid gap-3">
-              {Array.from({ length: pageCount }, (_, index) => {
-                const pageNumber = index + 1;
+              {pageNumbers.map((pageNumber) => {
                 const isActive = pageNumber === page;
 
                 return (
                   <button
                     key={pageNumber}
-                    onClick={() => setPage(pageNumber)}
+                    onClick={() => scrollToPage(pageNumber)}
                     className={cn(
                       "group rounded-2xl border p-2 text-left transition-all",
                       isActive
@@ -431,7 +444,10 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
             </div>
           </aside>
 
-          <main ref={viewportRef} className="viewer-scrollbar relative min-h-0 overflow-auto bg-[var(--surface-muted)] p-3 lg:p-5">
+          <main
+            ref={viewportRef}
+            className="viewer-scrollbar min-h-0 overflow-auto bg-[var(--surface-muted)] p-3 overscroll-contain sm:p-5"
+          >
             {loadState === "loading" && (
               <PdfStatus
                 icon={<Loader2 className="size-6 animate-spin" />}
@@ -451,30 +467,218 @@ export function PdfReader({ annex, onClose }: PdfReaderProps) {
             )}
 
             {loadState === "ready" && (
-              <div className="flex min-h-full items-start justify-center">
-                <div className="relative">
-                  {renderState === "rendering" && (
-                    <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-black/45 backdrop-blur-sm">
-                      <Loader2 className="size-6 animate-spin text-white" />
-                    </div>
-                  )}
+              <div className="mx-auto flex w-max max-w-full flex-col items-center gap-4 pb-8 sm:gap-6">
+                {hasPreviewPages
+                  ? previewPages.map((previewPage, index) => {
+                      const pageNumber = index + 1;
 
-                  {renderState === "error" ? (
-                    <PdfError
-                      title="Page could not be rendered"
-                      message={errorMessage}
-                      href={annex.href}
-                      downloadUrl={annex.downloadUrl}
-                      onRetry={() => setResizeToken((current) => current + 1)}
-                    />
-                  ) : (
-                    <canvas ref={canvasRef} className="rounded-2xl bg-white shadow-2xl" />
-                  )}
-                </div>
+                      return (
+                        <PdfImagePage
+                          key={previewPage.src}
+                          page={previewPage}
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          setPageRef={(element) => {
+                            pageRefs.current[pageNumber] = element;
+                          }}
+                        />
+                      );
+                    })
+                  : pdfDoc &&
+                    pageNumbers.map((pageNumber) => (
+                      <PdfPage
+                        key={pageNumber}
+                        pageNumber={pageNumber}
+                        pdfDoc={pdfDoc}
+                        root={viewportRef.current}
+                        scale={scale}
+                        setPageRef={(element) => {
+                          pageRefs.current[pageNumber] = element;
+                        }}
+                      />
+                    ))}
               </div>
             )}
           </main>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function PdfImagePage({
+  page,
+  pageNumber,
+  scale,
+  setPageRef,
+}: {
+  page: PreviewPage;
+  pageNumber: number;
+  scale: number;
+  setPageRef: (element: HTMLDivElement | null) => void;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const displayWidth = Math.max(160, Math.floor(page.width * scale));
+
+  useEffect(() => {
+    setPageRef(wrapperRef.current);
+    return () => setPageRef(null);
+  }, [setPageRef]);
+
+  return (
+    <div ref={wrapperRef} data-page-number={pageNumber} className="scroll-mt-4">
+      <div className="mb-2 flex items-center justify-between px-1 text-xs font-semibold text-[var(--muted-foreground)]">
+        <span>Page {pageNumber}</span>
+      </div>
+      <div className="relative rounded-xl bg-white shadow-2xl ring-1 ring-black/10 sm:rounded-2xl">
+        <img
+          src={page.src}
+          width={page.width}
+          height={page.height}
+          alt={`Page ${pageNumber}`}
+          loading={pageNumber <= 2 ? "eager" : "lazy"}
+          decoding="async"
+          className="block h-auto max-w-none rounded-xl bg-white sm:rounded-2xl"
+          style={{ width: `${displayWidth}px` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PdfPage({
+  pageNumber,
+  pdfDoc,
+  root,
+  scale,
+  setPageRef,
+}: {
+  pageNumber: number;
+  pdfDoc: PDFDocumentProxy;
+  root: HTMLElement | null;
+  scale: number;
+  setPageRef: (element: HTMLDivElement | null) => void;
+}) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<RenderTask | null>(null);
+  const [hasBeenNearViewport, setHasBeenNearViewport] = useState(pageNumber === 1);
+  const [renderState, setRenderState] = useState<"idle" | "rendering" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    setPageRef(wrapperRef.current);
+    return () => setPageRef(null);
+  }, [setPageRef]);
+
+  useEffect(() => {
+    const element = wrapperRef.current;
+    if (!element || !root || hasBeenNearViewport) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setHasBeenNearViewport(true);
+        }
+      },
+      { root, rootMargin: "900px 0px", threshold: 0.01 },
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [hasBeenNearViewport, root]);
+
+  useEffect(() => {
+    if (!hasBeenNearViewport) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function renderPage() {
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        return;
+      }
+
+      renderTaskRef.current?.cancel();
+      setRenderState("rendering");
+      setErrorMessage("");
+
+      try {
+        const pdfPage: PDFPageProxy = await pdfDoc.getPage(pageNumber);
+        const viewport = pdfPage.getViewport({ scale });
+        const context = canvas.getContext("2d");
+
+        if (!context) {
+          throw new Error("Canvas rendering is not available in this browser.");
+        }
+
+        const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(viewport.width * outputScale);
+        canvas.height = Math.floor(viewport.height * outputScale);
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        context.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+        context.clearRect(0, 0, viewport.width, viewport.height);
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, viewport.width, viewport.height);
+
+        const renderTask = pdfPage.render({
+          background: "rgb(255, 255, 255)",
+          canvas,
+          canvasContext: context,
+          viewport,
+        });
+        renderTaskRef.current = renderTask;
+        await renderTask.promise;
+
+        if (!cancelled) {
+          setRenderState("idle");
+        }
+      } catch (error: unknown) {
+        if (cancelled || (error instanceof Error && error.name === "RenderingCancelledException")) {
+          return;
+        }
+
+        setRenderState("error");
+        setErrorMessage(getErrorMessage(error));
+      }
+    }
+
+    void renderPage();
+
+    return () => {
+      cancelled = true;
+      renderTaskRef.current?.cancel();
+    };
+  }, [hasBeenNearViewport, pageNumber, pdfDoc, scale]);
+
+  return (
+    <div ref={wrapperRef} data-page-number={pageNumber} className="scroll-mt-4">
+      <div className="mb-2 flex items-center justify-between px-1 text-xs font-semibold text-[var(--muted-foreground)]">
+        <span>Page {pageNumber}</span>
+        {renderState === "rendering" && (
+          <span className="inline-flex items-center gap-1">
+            <Loader2 className="size-3 animate-spin" />
+            Rendering
+          </span>
+        )}
+      </div>
+      <div className="relative rounded-xl bg-white shadow-2xl ring-1 ring-black/10 sm:rounded-2xl">
+        {!hasBeenNearViewport && <div className="h-[520px] w-[min(78vw,760px)] rounded-xl bg-white sm:rounded-2xl" />}
+        {renderState === "error" && (
+          <div className="grid h-[520px] w-[min(78vw,760px)] place-items-center rounded-xl bg-white p-8 text-center text-black sm:rounded-2xl">
+            <div>
+              <FileSearch className="mx-auto mb-3 size-7" />
+              <p className="font-semibold">Page could not be rendered</p>
+              <p className="mt-2 text-sm text-black/60">{errorMessage}</p>
+            </div>
+          </div>
+        )}
+        <canvas ref={canvasRef} className={cn("block rounded-xl bg-white sm:rounded-2xl", !hasBeenNearViewport && "hidden")} />
       </div>
     </div>
   );

@@ -1,0 +1,114 @@
+{
+  "armoire-de-puissance-1-schema-only-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-001.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-002.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-003.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-004.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-005.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-006.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-007.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-008.png",
+        "width": 2200,
+        "height": 1556
+      },
+      {
+        "src": "/annex-pages/armoire-de-puissance-1-schema-only-pdf/page-009.png",
+        "width": 2200,
+        "height": 1556
+      }
+    ]
+  },
+  "plan-reducteur-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/plan-reducteur-pdf/page-001.png",
+        "width": 1556,
+        "height": 2200
+      }
+    ]
+  },
+  "pm710-circuit-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/pm710-circuit-pdf/page-001.png",
+        "width": 2200,
+        "height": 1555
+      }
+    ]
+  },
+  "poste-60kv-finale-schema-only-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/poste-60kv-finale-schema-only-pdf/page-001.png",
+        "width": 2200,
+        "height": 1556
+      }
+    ]
+  },
+  "poste-jour-version-finale-schema-only-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/poste-jour-version-finale-schema-only-pdf/page-001.png",
+        "width": 2200,
+        "height": 1556
+      }
+    ]
+  },
+  "poste-mine-finale-schema-only-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/poste-mine-finale-schema-only-pdf/page-001.png",
+        "width": 2200,
+        "height": 1556
+      }
+    ]
+  },
+  "poste-n-400-schema-only-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/poste-n-400-schema-only-pdf/page-001.png",
+        "width": 2200,
+        "height": 1556
+      }
+    ]
+  },
+  "tambour-akka-gm-pdf": {
+    "pages": [
+      {
+        "src": "/annex-pages/tambour-akka-gm-pdf/page-001.png",
+        "width": 1556,
+        "height": 2200
+      }
+    ]
+  }
+}

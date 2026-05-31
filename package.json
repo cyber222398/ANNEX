@@ -7,6 +7,7 @@
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 3000",
+    "pdf-pages": "node scripts/generate-annex-pages.mjs",
     "thumbnails": "node scripts/generate-annex-thumbnails.mjs",
     "lint": "tsc --noEmit"
   },

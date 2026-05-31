@@ -21,6 +21,11 @@ export type AnnexItem = {
   tags: string[];
   priority: number;
   pageCount?: number;
+  previewPages?: Array<{
+    src: string;
+    width: number;
+    height: number;
+  }>;
 };
 
 export type ReportFile = {
@@ -35,6 +40,7 @@ export type ReportFile = {
 
 const ANNEX_ROOT = path.join(process.cwd(), "public", "annexes");
 const THUMBNAIL_ROOT = path.join(process.cwd(), "public", "annex-thumbnails");
+const ANNEX_PAGE_MANIFEST = path.join(process.cwd(), "public", "annex-pages", "manifest.json");
 
 const supportedExtensions = new Set([
   ".pdf",
@@ -211,7 +217,20 @@ function getThumbnailUrl(id: string) {
   return fs.existsSync(thumbnailPath) ? `/annex-thumbnails/${id}.png` : undefined;
 }
 
+function getAnnexPageManifest(): Record<string, { pages?: AnnexItem["previewPages"] }> {
+  if (!fs.existsSync(ANNEX_PAGE_MANIFEST)) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(ANNEX_PAGE_MANIFEST, "utf8")) as Record<string, { pages?: AnnexItem["previewPages"] }>;
+  } catch {
+    return {};
+  }
+}
+
 export function getAnnexes(): AnnexItem[] {
+  const pageManifest = getAnnexPageManifest();
   const files = walkFiles(ANNEX_ROOT)
     .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()))
     .filter((file) => !isReportFile(path.basename(file)))
@@ -233,6 +252,7 @@ export function getAnnexes(): AnnexItem[] {
     const encodedRelative = encodePublicPath(relative);
     const href = `/annexes/${encodedRelative}`;
     const id = getAnnexId(relative);
+    const previewPages = pageManifest[id]?.pages?.filter((page) => page.src && page.width > 0 && page.height > 0);
 
     return {
       id,
@@ -250,7 +270,8 @@ export function getAnnexes(): AnnexItem[] {
       updatedAt: stat.mtime.toISOString(),
       tags: metadata?.tags ?? [classified.category.toLowerCase(), extension.replace(".", "")],
       priority: metadata?.priority ?? 500 + index,
-      pageCount: classified.kind === "pdf" ? 12 : undefined,
+      pageCount: previewPages?.length || undefined,
+      previewPages: previewPages?.length ? previewPages : undefined,
     } satisfies AnnexItem;
   });
 }

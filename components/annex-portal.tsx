@@ -258,8 +258,8 @@ function SiteHeader({ report }: { report: ReportFile | null }) {
         scrolled && "border-[#27272A] bg-black/75 backdrop-blur-xl",
       )}
     >
-      <div className="mx-auto flex h-full max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#home" className="flex items-center gap-3">
+      <div className="mx-auto flex h-full w-full max-w-[1200px] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
+        <a href="#home" className="flex min-w-0 items-center gap-3">
           <span className="grid size-8 place-items-center rounded-lg border border-[#27272A] bg-white text-black">
             <Layers3 className="size-4" strokeWidth={2} />
           </span>
@@ -292,7 +292,7 @@ function SiteHeader({ report }: { report: ReportFile | null }) {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 lg:hidden">
+        <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <ThemeToggle />
           <Sheet>
             <SheetTrigger asChild>
@@ -361,10 +361,10 @@ function HeroSection({
 
   return (
     <section id="home" className="hero-gradient border-b border-[#27272A]">
-      <div className="mx-auto max-w-[1200px] px-4 pb-24 pt-20 sm:px-6 lg:px-8 lg:pb-32">
+      <div className="mx-auto w-full max-w-[1200px] overflow-hidden px-4 pb-24 pt-16 sm:px-6 sm:pt-20 lg:px-8 lg:pb-32">
         <motion.div
-          className="mx-auto flex max-w-5xl flex-col items-center text-center"
-          initial="hidden"
+          className="mx-auto flex w-full max-w-5xl min-w-0 flex-col items-stretch text-center sm:items-center"
+          initial={false}
           animate="show"
           variants={{
             hidden: {},
@@ -372,27 +372,27 @@ function HeroSection({
           }}
         >
           <FadeUp>
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[#27272A] bg-[#0A0A0A] px-4 py-2 text-sm text-[#A1A1AA]">
+            <div className="mb-8 flex w-full min-w-0 items-center justify-center gap-2 rounded-2xl border border-[#27272A] bg-[#0A0A0A] px-4 py-2 text-center text-sm leading-6 text-[#A1A1AA] sm:inline-flex sm:w-auto sm:max-w-full sm:rounded-full">
               <SparkIcon />
-              Site personnel de soutenance - Stage de fin d'etude
+              <span className="min-w-0 whitespace-normal break-words">Site personnel de soutenance - Stage de fin d'etude</span>
             </div>
           </FadeUp>
 
           <FadeUp>
-            <h1 className="max-w-5xl text-balance text-[36px] font-bold leading-[1.05] tracking-[-0.04em] md:text-[48px] lg:text-[72px]">
+            <h1 className="mx-auto w-full min-w-0 max-w-[22rem] text-wrap break-words text-[26px] font-bold leading-[1.12] sm:max-w-full sm:text-balance sm:text-[36px] md:text-[48px] lg:text-[72px]">
               Informations et annexes du rapport de stage, reunies pour la soutenance.
             </h1>
           </FadeUp>
 
           <FadeUp>
-            <p className="mt-6 max-w-3xl text-base leading-[1.7] text-[#A1A1AA] md:text-lg">
+            <p className="mx-auto mt-6 w-full min-w-0 max-w-[22rem] break-words text-base leading-[1.7] text-[#A1A1AA] sm:max-w-3xl md:text-lg">
               Ce site est un espace personnel developpe par AZNAG AYOUB pour aider l'examinateur a consulter les
               documents, schemas, captures et annexes cites dans le rapport de stage.
             </p>
           </FadeUp>
 
           <FadeUp>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
+            <div className="mx-auto mt-8 flex w-full max-w-[22rem] flex-col gap-3 sm:max-w-full sm:flex-row sm:flex-wrap sm:justify-center">
               <Button asChild>
                 <a href="#annexes">
                   Consulter les annexes
@@ -418,8 +418,8 @@ function HeroSection({
         </motion.div>
 
         <motion.div
-          className="mx-auto mt-16 max-w-6xl overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A]"
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          className="mx-auto mt-16 w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A] sm:max-w-6xl"
+          initial={false}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.25, ease: "easeOut" }}
         >
@@ -551,15 +551,15 @@ function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: Anne
   ];
 
   return (
-    <section id="dashboard" className="mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8">
+    <section id="dashboard" className="mx-auto w-full max-w-[1200px] overflow-hidden px-4 py-24 sm:px-6 lg:px-8">
       <SectionHeading
         eyebrow="Apercu soutenance"
         title="Un resume visuel des annexes et documents disponibles."
         description="Cette zone presente l'etat des fichiers, les familles de documents et les annexes importantes du rapport de stage."
       />
 
-      <div className="mt-12 overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A]">
-        <div className="flex h-14 items-center justify-between border-b border-[#27272A] px-5">
+      <div className="mt-12 w-full min-w-0 overflow-hidden rounded-2xl border border-[#27272A] bg-[#0A0A0A]">
+        <div className="flex h-14 min-w-0 items-center justify-between gap-3 border-b border-[#27272A] px-4 sm:px-5">
           <div className="flex items-center gap-3">
             <Gauge className="size-5 text-white" />
             <span className="text-sm font-semibold">Archive de soutenance</span>
@@ -567,9 +567,9 @@ function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: Anne
           <span className="rounded-lg border border-[#27272A] px-3 py-1 text-sm text-[#A1A1AA]">Pret</span>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[1fr_380px]">
-          <div className="border-b border-[#27272A] p-6 lg:border-b-0 lg:border-r">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="min-w-0 border-b border-[#27272A] p-4 sm:p-6 lg:border-b-0 lg:border-r">
+            <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {metrics.map((metric) => (
                 <Card key={metric.label}>
                   <CardHeader className="p-4">
@@ -581,14 +581,14 @@ function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: Anne
               ))}
             </div>
 
-            <div className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
               <Card>
                 <CardHeader>
                   <CardTitle>Activite des annexes</CardTitle>
                   <CardDescription>Fichiers classes par importance pour la soutenance</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex h-56 items-end gap-3 border-b border-l border-[#27272A] px-4 pb-4">
+                  <div className="flex h-56 min-w-0 items-end gap-2 border-b border-l border-[#27272A] px-2 pb-4 sm:gap-3 sm:px-4">
                     {[44, 76, 52, 88, 63, 94, 72, 80].map((height, index) => (
                       <div key={index} className="flex flex-1 items-end">
                         <div className="w-full rounded-t-lg bg-white/80" style={{ height: `${height}%` }} />
@@ -623,7 +623,7 @@ function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: Anne
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="min-w-0 p-4 sm:p-6">
             <Card>
               <CardHeader>
                 <CardTitle>Annexes principales</CardTitle>
@@ -639,8 +639,8 @@ function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: Anne
                         Pret
                       </span>
                     </div>
-                    <div className="flex items-center justify-between text-sm text-[#71717A]">
-                      <span className="truncate">{annex.description}</span>
+                    <div className="flex min-w-0 items-center justify-between text-sm text-[#71717A]">
+                      <span className="min-w-0 truncate">{annex.description}</span>
                       <span className="ml-3 shrink-0">{annex.extension}</span>
                     </div>
                   </div>
@@ -1138,6 +1138,7 @@ function AnnexViewer({ annex, onClose }: { annex: AnnexItem; onClose: () => void
 function FadeUp({ children }: { children: ReactNode }) {
   return (
     <motion.div
+      initial={false}
       variants={{
         hidden: { opacity: 0, y: 16 },
         show: { opacity: 1, y: 0 },
