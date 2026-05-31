@@ -49,7 +49,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { AnnexItem } from "@/lib/annexes";
+import type { AnnexItem, ReportFile } from "@/lib/annexes";
 import { cn } from "@/lib/utils";
 
 type AnnexStats = {
@@ -63,6 +63,7 @@ type AnnexStats = {
 type AnnexPortalProps = {
   annexes: AnnexItem[];
   stats: AnnexStats;
+  report: ReportFile | null;
 };
 
 type Category = "All" | "Documents" | "Schematics" | "Photos" | "Data";
@@ -136,7 +137,7 @@ const infrastructureCoverage: Array<{ label: string; value: number; icon: Lucide
   { label: "Documents", value: 92, icon: FileText },
 ];
 
-export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
+export function AnnexPortal({ annexes, stats, report }: AnnexPortalProps) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category>("All");
   const [selectedAnnex, setSelectedAnnex] = useState<AnnexItem | null>(null);
@@ -173,9 +174,16 @@ export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
   return (
     <TooltipProvider delayDuration={120}>
       <main className="site-grid min-h-screen bg-black text-white">
-        <SiteHeader />
+        <SiteHeader report={report} />
 
-        <HeroSection annexes={annexes} stats={stats} query={query} setQuery={setQuery} onOpen={setSelectedAnnex} />
+        <HeroSection
+          annexes={annexes}
+          stats={stats}
+          query={query}
+          report={report}
+          setQuery={setQuery}
+          onOpen={setSelectedAnnex}
+        />
 
         <ProjectSummary stats={stats} />
 
@@ -233,7 +241,7 @@ export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
   );
 }
 
-function SiteHeader() {
+function SiteHeader({ report }: { report: ReportFile | null }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -268,6 +276,14 @@ function SiteHeader() {
 
         <div className="hidden items-center gap-3 lg:flex">
           <ThemeToggle />
+          {report && (
+            <Button asChild variant="secondary">
+              <a href={report.downloadUrl} download>
+                <Download />
+                Rapport
+              </a>
+            </Button>
+          )}
           <Button asChild variant="ghost">
             <a href="#annexes">Acces annexes</a>
           </Button>
@@ -303,6 +319,14 @@ function SiteHeader() {
                 ))}
               </nav>
               <div className="mt-8 grid gap-3">
+                {report && (
+                  <Button asChild variant="secondary">
+                    <a href={report.downloadUrl} download>
+                      <Download />
+                      Rapport
+                    </a>
+                  </Button>
+                )}
                 <Button asChild variant="secondary">
                   <a href="#annexes">Acces annexes</a>
                 </Button>
@@ -322,12 +346,14 @@ function HeroSection({
   annexes,
   stats,
   query,
+  report,
   setQuery,
   onOpen,
 }: {
   annexes: AnnexItem[];
   stats: AnnexStats;
   query: string;
+  report: ReportFile | null;
   setQuery: (query: string) => void;
   onOpen: (annex: AnnexItem) => void;
 }) {
@@ -366,13 +392,21 @@ function HeroSection({
           </FadeUp>
 
           <FadeUp>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
               <Button asChild>
                 <a href="#annexes">
                   Consulter les annexes
                   <ArrowRight />
                 </a>
               </Button>
+              {report && (
+                <Button asChild variant="secondary">
+                  <a href={report.downloadUrl} download>
+                    Telecharger le rapport
+                    <Download />
+                  </a>
+                </Button>
+              )}
               <Button asChild variant="secondary">
                 <a href="#documentation">
                   Documents

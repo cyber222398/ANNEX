@@ -23,6 +23,16 @@ export type AnnexItem = {
   pageCount?: number;
 };
 
+export type ReportFile = {
+  title: string;
+  fileName: string;
+  href: string;
+  downloadUrl: string;
+  size: string;
+  sizeBytes: number;
+  updatedAt: string;
+};
+
 const ANNEX_ROOT = path.join(process.cwd(), "public", "annexes");
 const THUMBNAIL_ROOT = path.join(process.cwd(), "public", "annex-thumbnails");
 
@@ -50,36 +60,71 @@ const knownAnnexes: Array<{
   match: RegExp;
   description: string;
   tags: string[];
+  priority: number;
+  category?: AnnexItem["category"];
 }> = [
   {
-    match: /60\s*kv|poste\s*principal|60[-_\s]?22/i,
+    match: /poste\s*60\s*kv|60\s*kv|poste\s*principal|60[-_\s]?22/i,
     description: "Poste principal 60/22 kV",
-    tags: ["poste", "60/22 kV", "distribution"],
+    tags: ["poste principal", "60/22 kV", "distribution"],
+    priority: 10,
+    category: "Schematics",
   },
   {
-    match: /schema|schematics?|electrique|armoire|poste/i,
-    description: "Schemas electriques et plans de raccordement",
-    tags: ["schema", "electrique", "plan"],
+    match: /poste\s*mine/i,
+    description: "Distribution electrique - poste mine",
+    tags: ["distribution", "poste mine", "electricite"],
+    priority: 20,
+    category: "Schematics",
   },
   {
-    match: /tambour|moteur|mcc/i,
-    description: "Documentation moteur et tambour",
-    tags: ["moteur", "MCC", "documentation"],
+    match: /poste\s*jour/i,
+    description: "Distribution electrique - poste jour",
+    tags: ["distribution", "poste jour", "electricite"],
+    priority: 30,
+    category: "Schematics",
   },
   {
-    match: /plan\s*reducteur|reducteur/i,
-    description: "Plan reducteur",
-    tags: ["reducteur", "plan", "mecanique"],
+    match: /poste\s*n[-_\s]?400|n[-_\s]?400/i,
+    description: "Distribution electrique - poste fond N-400",
+    tags: ["distribution", "poste fond", "N-400"],
+    priority: 40,
+    category: "Schematics",
+  },
+  {
+    match: /appel\s*de\s*courant|scada|skip|courbe|courant/i,
+    description: "Courbes SCADA du skip",
+    tags: ["SCADA", "skip", "courbes"],
+    priority: 50,
+    category: "Data",
+  },
+  {
+    match: /armoire\s*de\s*puissance|puissance/i,
+    description: "Schemas armoire puissance",
+    tags: ["armoire", "puissance", "schema"],
+    priority: 60,
+    category: "Schematics",
   },
   {
     match: /pm710|circuit/i,
-    description: "Schema PM710",
-    tags: ["PM710", "schema", "mesure"],
+    description: "Circuit PM710",
+    tags: ["PM710", "circuit", "mesure"],
+    priority: 70,
+    category: "Schematics",
   },
   {
-    match: /appel\s*de\s*courant|courant/i,
-    description: "Appel de courant",
-    tags: ["courant", "mesure", "demarrage"],
+    match: /tambour|akka|moteur|mcc/i,
+    description: "Documentation dessin tambour",
+    tags: ["tambour", "dessin", "documentation"],
+    priority: 80,
+    category: "Documents",
+  },
+  {
+    match: /plan\s*reducteur|reducteur/i,
+    description: "Documentation dessin reducteur",
+    tags: ["reducteur", "dessin", "documentation"],
+    priority: 90,
+    category: "Documents",
   },
 ];
 
@@ -136,6 +181,10 @@ function getKnownMetadata(filename: string) {
   return knownAnnexes.find((annex) => annex.match.test(filename));
 }
 
+function isReportFile(filename: string) {
+  return /rapport/i.test(filename) && path.extname(filename).toLowerCase() === ".pdf";
+}
+
 function encodePublicPath(relativePath: string) {
   return relativePath.split("/").map(encodeURIComponent).join("/");
 }
@@ -165,11 +214,11 @@ function getThumbnailUrl(id: string) {
 export function getAnnexes(): AnnexItem[] {
   const files = walkFiles(ANNEX_ROOT)
     .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()))
+    .filter((file) => !isReportFile(path.basename(file)))
     .filter((file) => !path.basename(file).startsWith("."))
     .sort((a, b) =>
-      path
-        .relative(ANNEX_ROOT, a)
-        .localeCompare(path.relative(ANNEX_ROOT, b), undefined, { numeric: true, sensitivity: "base" }),
+      (getKnownMetadata(path.basename(a))?.priority ?? 500) - (getKnownMetadata(path.basename(b))?.priority ?? 500) ||
+      path.basename(a).localeCompare(path.basename(b), undefined, { numeric: true, sensitivity: "base" }),
     );
 
   return files.map((absolute, index) => {
@@ -178,7 +227,8 @@ export function getAnnexes(): AnnexItem[] {
     const extension = path.extname(absolute).toLowerCase();
     const metadata = getKnownMetadata(fileName);
     const stat = fs.statSync(absolute);
-    const classified = classifyAnnex(extension, fileName);
+    const baseClassification = classifyAnnex(extension, fileName);
+    const classified = metadata?.category ? { ...baseClassification, category: metadata.category } : baseClassification;
     const readableName = titleFromFilename(fileName);
     const encodedRelative = encodePublicPath(relative);
     const href = `/annexes/${encodedRelative}`;
@@ -199,10 +249,36 @@ export function getAnnexes(): AnnexItem[] {
       sizeBytes: stat.size,
       updatedAt: stat.mtime.toISOString(),
       tags: metadata?.tags ?? [classified.category.toLowerCase(), extension.replace(".", "")],
-      priority: index + 1,
+      priority: metadata?.priority ?? 500 + index,
       pageCount: classified.kind === "pdf" ? 12 : undefined,
     } satisfies AnnexItem;
   });
+}
+
+export function getReportFile(): ReportFile | null {
+  const report = walkFiles(ANNEX_ROOT)
+    .filter((file) => isReportFile(path.basename(file)))
+    .sort((a, b) => path.basename(a).localeCompare(path.basename(b), undefined, { numeric: true, sensitivity: "base" }))
+    .at(0);
+
+  if (!report) {
+    return null;
+  }
+
+  const relative = path.relative(ANNEX_ROOT, report).replaceAll(path.sep, "/");
+  const fileName = path.basename(report);
+  const stat = fs.statSync(report);
+  const href = `/annexes/${encodePublicPath(relative)}`;
+
+  return {
+    title: "Rapport de SFE 2026",
+    fileName,
+    href,
+    downloadUrl: href,
+    size: formatBytes(stat.size),
+    sizeBytes: stat.size,
+    updatedAt: stat.mtime.toISOString(),
+  };
 }
 
 export function getAnnexStats(annexes: AnnexItem[]) {

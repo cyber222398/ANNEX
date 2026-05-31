@@ -59,6 +59,10 @@ function getAnnexId(relativePath) {
   return relativePath.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function isReportFile(filePath) {
+  return /rapport/i.test(path.basename(filePath)) && path.extname(filePath).toLowerCase() === ".pdf";
+}
+
 function assetPathForDirectory(directory) {
   return `${directory.replaceAll("\\", "/")}/`;
 }
@@ -217,6 +221,7 @@ async function main() {
 
   const files = walkFiles(annexRoot)
     .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()))
+    .filter((file) => !isReportFile(file))
     .filter((file) => !path.basename(file).startsWith("."))
     .sort((a, b) =>
       path
