@@ -129,13 +129,6 @@ const featureCards: Array<{
   },
 ];
 
-const dashboardRows = [
-  { name: "Annexe A", type: "PDF", status: "Pret", owner: "Poste 60/22 kV" },
-  { name: "Annexe B", type: "SVG", status: "Indexe", owner: "Schemas electriques" },
-  { name: "Annexe E", type: "Image", status: "Verifie", owner: "Courbes SCADA" },
-  { name: "Annexe F", type: "SVG", status: "Pret", owner: "Centrale de mesure" },
-];
-
 const infrastructureCoverage: Array<{ label: string; value: number; icon: LucideIcon }> = [
   { label: "Electrique", value: 84, icon: Zap },
   { label: "Commande", value: 68, icon: Cpu },
@@ -188,7 +181,7 @@ export function AnnexPortal({ annexes, stats }: AnnexPortalProps) {
 
         <FeaturesSection />
 
-        <DashboardPreview stats={stats} />
+        <DashboardPreview stats={stats} annexes={annexes.slice(0, 4)} />
 
         <AnnexExplorer
           annexes={filteredAnnexes}
@@ -515,7 +508,7 @@ function FeaturesSection() {
   );
 }
 
-function DashboardPreview({ stats }: { stats: AnnexStats }) {
+function DashboardPreview({ stats, annexes }: { stats: AnnexStats; annexes: AnnexItem[] }) {
   const metrics = [
     { label: "Etat du support", value: "Pret", icon: Activity },
     { label: "Documents", value: stats.documents, icon: FileText },
@@ -603,18 +596,18 @@ function DashboardPreview({ stats }: { stats: AnnexStats }) {
                 <CardDescription>Etat des annexes importantes du rapport</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-2">
-                {dashboardRows.map((row) => (
-                  <div key={row.name} className="rounded-xl border border-[#27272A] bg-black p-4">
+                {annexes.map((annex) => (
+                  <div key={annex.id} className="rounded-xl border border-[#27272A] bg-black p-4">
                     <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold">{row.name}</span>
+                      <span className="text-sm font-semibold">{annex.title}</span>
                       <span className="flex items-center gap-1.5 text-sm text-[#A1A1AA]">
                         <CheckCircle2 className="size-4" />
-                        {row.status}
+                        Pret
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-sm text-[#71717A]">
-                      <span>{row.owner}</span>
-                      <span>{row.type}</span>
+                      <span className="truncate">{annex.description}</span>
+                      <span className="ml-3 shrink-0">{annex.extension}</span>
                     </div>
                   </div>
                 ))}
@@ -720,7 +713,7 @@ function AnnexCard({ annex, onOpen }: { annex: AnnexItem; onOpen: () => void }) 
 
   return (
     <Card className="card-hover h-full overflow-hidden">
-      <button onClick={onOpen} className="block w-full text-left">
+      <button onClick={onOpen} className="group block w-full text-left">
         <AnnexPreview annex={annex} />
       </button>
 
@@ -838,11 +831,11 @@ function LibrarySection({
 
       <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {annexes.map((annex) => (
-          <button key={annex.id} onClick={() => onOpen(annex)} className="text-left">
-            <Card className="card-hover h-full">
+          <button key={annex.id} onClick={() => onOpen(annex)} className="group text-left">
+            <Card className="card-hover h-full overflow-hidden">
+              <AnnexPreview annex={annex} />
               <CardHeader>
-                <AnnexIcon annex={annex} />
-                <CardTitle className="mt-6 truncate">{annex.title}</CardTitle>
+                <CardTitle className="truncate">{annex.title}</CardTitle>
                 <CardDescription>{annex.description}</CardDescription>
               </CardHeader>
             </Card>
@@ -992,6 +985,26 @@ function AnnexIcon({ annex }: { annex: AnnexItem }) {
 
 function AnnexPreview({ annex }: { annex: AnnexItem }) {
   const Icon = typeIcons[annex.kind];
+
+  if (annex.thumbnailUrl) {
+    return (
+      <div className="relative aspect-[16/10] overflow-hidden border-b border-[#27272A] bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={annex.thumbnailUrl}
+          alt={`Apercu ${annex.title} - ${annex.description}`}
+          loading="lazy"
+          className="h-full w-full object-cover object-top transition duration-300 group-hover:scale-[1.02]"
+        />
+        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/86 via-black/40 to-transparent p-4 pt-10">
+          <span className="truncate text-sm font-semibold text-white">{annex.title}</span>
+          <span className="shrink-0 rounded-lg border border-white/20 bg-black/50 px-2 py-1 text-xs font-semibold text-white">
+            {annex.extension}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (annex.kind === "image" || annex.kind === "schematic") {
     return (

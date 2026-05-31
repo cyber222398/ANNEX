@@ -11,6 +11,7 @@ export type AnnexItem = {
   fileName: string;
   href: string;
   downloadUrl: string;
+  thumbnailUrl?: string;
   extension: string;
   kind: AnnexKind;
   category: "Documents" | "Schematics" | "Photos" | "Data" | "Other";
@@ -23,6 +24,7 @@ export type AnnexItem = {
 };
 
 const ANNEX_ROOT = path.join(process.cwd(), "public", "annexes");
+const THUMBNAIL_ROOT = path.join(process.cwd(), "public", "annex-thumbnails");
 
 const supportedExtensions = new Set([
   ".pdf",
@@ -46,59 +48,38 @@ const supportedExtensions = new Set([
 
 const knownAnnexes: Array<{
   match: RegExp;
-  title: string;
   description: string;
   tags: string[];
-  priority: number;
 }> = [
   {
-    match: /annexe[-_\s]?a|poste[-_\s]?principal|60[-_\s]?22/i,
-    title: "Annexe A",
+    match: /60\s*kv|poste\s*principal|60[-_\s]?22/i,
     description: "Poste principal 60/22 kV",
     tags: ["poste", "60/22 kV", "distribution"],
-    priority: 10,
   },
   {
-    match: /annexe[-_\s]?b|schema|schematics?|electrique/i,
-    title: "Annexe B",
+    match: /schema|schematics?|electrique|armoire|poste/i,
     description: "Schemas electriques et plans de raccordement",
     tags: ["schema", "electrique", "plan"],
-    priority: 20,
   },
   {
-    match: /annexe[-_\s]?c|moteur|mcc/i,
-    title: "Annexe C",
-    description: "Documentation moteur MCC",
+    match: /tambour|moteur|mcc/i,
+    description: "Documentation moteur et tambour",
     tags: ["moteur", "MCC", "documentation"],
-    priority: 30,
   },
   {
-    match: /annexe[-_\s]?d|dcreg4/i,
-    title: "Annexe D",
-    description: "Documentation DCREG4",
-    tags: ["DCREG4", "variateur", "documentation"],
-    priority: 40,
+    match: /plan\s*reducteur|reducteur/i,
+    description: "Plan reducteur",
+    tags: ["reducteur", "plan", "mecanique"],
   },
   {
-    match: /annexe[-_\s]?e|scada|courbe/i,
-    title: "Annexe E",
-    description: "Courbes SCADA et captures d'exploitation",
-    tags: ["SCADA", "courbes", "capture"],
-    priority: 50,
+    match: /pm710|circuit/i,
+    description: "Schema PM710",
+    tags: ["PM710", "schema", "mesure"],
   },
   {
-    match: /annexe[-_\s]?f|centrale[-_\s]?de[-_\s]?mesure|mesure/i,
-    title: "Annexe F",
-    description: "Centrale de mesure",
-    tags: ["mesure", "energie", "instrumentation"],
-    priority: 60,
-  },
-  {
-    match: /annexe[-_\s]?g|transformateur|courant|tc/i,
-    title: "Annexe G",
-    description: "Transformateurs de courant",
-    tags: ["TC", "transformateur", "protection"],
-    priority: 70,
+    match: /appel\s*de\s*courant|courant/i,
+    description: "Appel de courant",
+    tags: ["courant", "mesure", "demarrage"],
   },
 ];
 
@@ -122,7 +103,16 @@ function classifyAnnex(extension: string, filename: string): Pick<AnnexItem, "ki
   const lowerName = filename.toLowerCase();
 
   if (extension === ".pdf") {
-    return { kind: "pdf", category: "Documents" };
+    return {
+      kind: "pdf",
+      category:
+        lowerName.includes("schema") ||
+        lowerName.includes("poste") ||
+        lowerName.includes("pm710") ||
+        lowerName.includes("circuit")
+          ? "Schematics"
+          : "Documents",
+    };
   }
 
   if (extension === ".svg" || lowerName.includes("schema") || lowerName.includes("schematic")) {
@@ -146,40 +136,73 @@ function getKnownMetadata(filename: string) {
   return knownAnnexes.find((annex) => annex.match.test(filename));
 }
 
+function encodePublicPath(relativePath: string) {
+  return relativePath.split("/").map(encodeURIComponent).join("/");
+}
+
+function getAnnexLabel(index: number) {
+  let value = index + 1;
+  let label = "";
+
+  while (value > 0) {
+    value -= 1;
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26);
+  }
+
+  return label;
+}
+
+function getAnnexId(relativePath: string) {
+  return relativePath.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function getThumbnailUrl(id: string) {
+  const thumbnailPath = path.join(THUMBNAIL_ROOT, `${id}.png`);
+  return fs.existsSync(thumbnailPath) ? `/annex-thumbnails/${id}.png` : undefined;
+}
+
 export function getAnnexes(): AnnexItem[] {
   const files = walkFiles(ANNEX_ROOT)
     .filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()))
-    .filter((file) => !path.basename(file).startsWith("."));
+    .filter((file) => !path.basename(file).startsWith("."))
+    .sort((a, b) =>
+      path
+        .relative(ANNEX_ROOT, a)
+        .localeCompare(path.relative(ANNEX_ROOT, b), undefined, { numeric: true, sensitivity: "base" }),
+    );
 
-  return files
-    .map((absolute, index) => {
-      const relative = path.relative(ANNEX_ROOT, absolute).replaceAll(path.sep, "/");
-      const fileName = path.basename(absolute);
-      const extension = path.extname(absolute).toLowerCase();
-      const metadata = getKnownMetadata(fileName);
-      const stat = fs.statSync(absolute);
-      const classified = classifyAnnex(extension, fileName);
-      const readableName = titleFromFilename(fileName);
+  return files.map((absolute, index) => {
+    const relative = path.relative(ANNEX_ROOT, absolute).replaceAll(path.sep, "/");
+    const fileName = path.basename(absolute);
+    const extension = path.extname(absolute).toLowerCase();
+    const metadata = getKnownMetadata(fileName);
+    const stat = fs.statSync(absolute);
+    const classified = classifyAnnex(extension, fileName);
+    const readableName = titleFromFilename(fileName);
+    const encodedRelative = encodePublicPath(relative);
+    const href = `/annexes/${encodedRelative}`;
+    const id = getAnnexId(relative);
 
-      return {
-        id: relative.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
-        title: metadata?.title ?? readableName,
-        description: metadata?.description ?? `${classified.category} reference file`,
-        fileName,
-        href: `/annexes/${relative}`,
-        downloadUrl: `/annexes/${relative}`,
-        extension: extension.replace(".", "").toUpperCase(),
-        kind: classified.kind,
-        category: classified.category,
-        size: formatBytes(stat.size),
-        sizeBytes: stat.size,
-        updatedAt: stat.mtime.toISOString(),
-        tags: metadata?.tags ?? [classified.category.toLowerCase(), extension.replace(".", "")],
-        priority: metadata?.priority ?? 500 + index,
-        pageCount: classified.kind === "pdf" ? 12 : undefined,
-      } satisfies AnnexItem;
-    })
-    .sort((a, b) => a.priority - b.priority || a.fileName.localeCompare(b.fileName));
+    return {
+      id,
+      title: `Annexe ${getAnnexLabel(index)}`,
+      description: metadata?.description ?? readableName,
+      fileName,
+      href,
+      downloadUrl: href,
+      thumbnailUrl: getThumbnailUrl(id),
+      extension: extension.replace(".", "").toUpperCase(),
+      kind: classified.kind,
+      category: classified.category,
+      size: formatBytes(stat.size),
+      sizeBytes: stat.size,
+      updatedAt: stat.mtime.toISOString(),
+      tags: metadata?.tags ?? [classified.category.toLowerCase(), extension.replace(".", "")],
+      priority: index + 1,
+      pageCount: classified.kind === "pdf" ? 12 : undefined,
+    } satisfies AnnexItem;
+  });
 }
 
 export function getAnnexStats(annexes: AnnexItem[]) {

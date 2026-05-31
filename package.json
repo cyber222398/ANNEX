@@ -7,6 +7,7 @@
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0 --port 3000",
+    "thumbnails": "node scripts/generate-annex-thumbnails.mjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -21,6 +22,7 @@
     "framer-motion": "^12.40.0",
     "lucide-react": "^0.546.0",
     "next": "^16.2.6",
+    "pdfjs-dist": "^6.0.227",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tailwind-merge": "^3.6.0"
